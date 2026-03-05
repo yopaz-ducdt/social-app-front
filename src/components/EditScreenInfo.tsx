@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native';
+import { Text, View, Button } from 'react-native';
 
 interface EditScreenInfoProps {
   path: string;
@@ -7,7 +7,7 @@ interface EditScreenInfoProps {
 export const EditScreenInfo: React.FC<EditScreenInfoProps> = ({ path }) => {
   const title = 'Open up the code for this screen:';
   const description =
-    'Change any of the text, save the file, and your app will automatically update.';
+    'Hello world';
 
   return (
     <View>
@@ -15,6 +15,7 @@ export const EditScreenInfo: React.FC<EditScreenInfoProps> = ({ path }) => {
         <Text className={styles.getStartedText}>{title}</Text>
         <View className={`${styles.codeHighlightContainer} ${styles.homeScreenFilename}`}>
           <Text>{path}</Text>
+          <Button title="This is a button" onPress={() => {alert("Button pressed!")}} />
         </View>
         <Text className={styles.getStartedText}>{description}</Text>
       </View>
