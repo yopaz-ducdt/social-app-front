@@ -8,7 +8,7 @@ const Icons = {
   search: { active: '🔍', inactive: '🔍' },
   add: { active: '➕', inactive: '➕' },
   reels: { active: '🎬', inactive: '🎬' },
-  profile: { active: '👤', inactive: '👤' },
+  Settings: { active: '⚙️', inactive: '⚙️' },
 };
 
 const TAB_ITEMS = [
@@ -16,7 +16,7 @@ const TAB_ITEMS = [
   { key: 'search', label: 'Tìm kiếm' },
   { key: 'add', label: 'Đăng bài' },
   { key: 'reels', label: 'Reels' },
-  { key: 'profile', label: 'Cá nhân' },
+  { key: 'Settings', label: 'Cài đặt' },
 ];
 
 /**

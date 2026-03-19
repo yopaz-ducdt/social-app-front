@@ -108,6 +108,7 @@ export default function HomeScreen() {
       {/* FAB */}
       <TouchableOpacity
         className="absolute bottom-20 right-5 h-12 w-12 items-center justify-center rounded-full bg-black shadow-lg"
+        onPress={() => navigation.navigate('CreatePost')}
         activeOpacity={0.85}>
         <Text className="text-2xl leading-none text-white">+</Text>
       </TouchableOpacity>

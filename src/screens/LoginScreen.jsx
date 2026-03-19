@@ -94,8 +94,10 @@ export default function LoginScreen() {
           </View>
 
           {/* Quên mật khẩu */}
-          <TouchableOpacity className="mb-8 items-end">
-            <Text className="text-sm text-gray-500">Quên mật khẩu ?</Text>
+          <TouchableOpacity
+            className="mb-3 w-full"
+            onPress={() => navigation.navigate('ForgotPassword')}>
+            <Text className="text-right">Quên mật khẩu ?</Text>
           </TouchableOpacity>
 
           {/* Button login */}
