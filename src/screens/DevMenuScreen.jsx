@@ -12,6 +12,11 @@ const SCREENS = [
   { name: 'PostDetail', label: '📄 Chi tiết bài đăng' },
   { name: 'Settings', label: '⚙️ Cài đặt' },
   { name: 'Profile', label: 'Profile' },
+  { name: 'EditProfile', label: 'EditProfile' },
+  { name: 'AdminDashboard', label: 'AdminDashboard' },
+  { name: 'EditPost', label: 'EditPost' },
+  { name: 'AdminUsers', label: 'AdminUsers' },
+  { name: 'AdminContent', label: 'AdminContent' },
 ];
 
 export default function DevMenuScreen() {

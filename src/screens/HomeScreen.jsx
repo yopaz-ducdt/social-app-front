@@ -1,8 +1,8 @@
 import { useNavigation } from '@react-navigation/native';
 import { View, Text, TouchableOpacity, ScrollView, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import BottomTab from '../components/BottomTab';
-import PostCard from '../components/PostCard';
+import BottomTab from '@/components/BottomTab';
+import PostCard from '@/components/PostCard';
 
 // ─── Fake Data ───────────────────────────────────────────────
 const STORIES = [

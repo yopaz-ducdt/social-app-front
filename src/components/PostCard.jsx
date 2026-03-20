@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import PostOptionsModal from '@/components/PostOptionsModal';
 
 const { width } = Dimensions.get('window');
 
@@ -15,6 +16,7 @@ export default function PostCard({ post }) {
   const [liked, setLiked] = useState(post.liked);
   const [saved, setSaved] = useState(post.saved);
   const [likes, setLikes] = useState(post.likes);
+  const [showOptions, setShowOptions] = useState(false);
 
   const toggleLike = () => {
     setLiked(!liked);
@@ -33,7 +35,7 @@ export default function PostCard({ post }) {
           <Text className="text-sm font-semibold text-gray-900">{post.username}</Text>
           <Text className="text-xs text-gray-400">{post.location}</Text>
         </View>
-        <TouchableOpacity className="px-1" onPress={(e) => e.stopPropagation()}>
+        <TouchableOpacity className="px-1" onPress={() => setShowOptions(true)}>
           <IconMore />
         </TouchableOpacity>
       </TouchableOpacity>
@@ -77,6 +79,12 @@ export default function PostCard({ post }) {
 
       {/* Time */}
       <Text className="mt-1 px-4 text-xs text-gray-400">{post.time}</Text>
+      <PostOptionsModal
+        visible={showOptions}
+        onClose={() => setShowOptions(false)}
+        post={post}
+        onDelete={(id) => console.log('Xoá bài:', id)}
+      />
     </View>
   );
 }

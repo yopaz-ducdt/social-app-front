@@ -13,6 +13,9 @@ import ProfileScreen from '@/screens/ProfileScreen';
 import EditProfileScreen from '@/screens/EditProfileScreen';
 import CreatePostScreen from '@/screens/CreatePostScreen';
 import AdminDashboardScreen from '@/screens/AdmindashboardScreen';
+import EditPostScreen from '@/screens/EditPostScreen';
+import AdminUsersScreen from '@/screens/AdminUserScreen';
+import AdminContentScreen from '@/screens/AdminContentScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -37,7 +40,9 @@ export default function AppNavigator() {
       <Stack.Screen name="DevMenu" component={DevMenuScreen} options={{ headerShown: false }} />
 
       <Stack.Screen name="Login" component={LoginScreen} />
+
       <Stack.Screen name="Signup" component={SignupScreen} />
+
       <Stack.Screen
         name="ForgotPassword"
         component={ForgotPasswordScreen}
@@ -78,6 +83,8 @@ export default function AppNavigator() {
         }}
       />
 
+      <Stack.Screen name="EditPost" component={EditPostScreen} options={{ headerShown: false }} />
+
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
 
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
@@ -91,6 +98,18 @@ export default function AppNavigator() {
       <Stack.Screen
         name="AdminDashboard"
         component={AdminDashboardScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="AdminUsers"
+        component={AdminUsersScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="AdminContent"
+        component={AdminContentScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
