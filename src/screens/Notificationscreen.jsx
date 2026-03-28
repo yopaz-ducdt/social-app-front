@@ -1,54 +1,42 @@
-import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomTab from '../components/BottomTab';
+import { userService } from '@/services/userService';
 
-// ─── Fake Data ───────────────────────────────────────────────
-const NOTIFICATIONS = [
-  {
-    id: '1',
-    type: 'follow',
-    avatar: null,
-    title: 'Nguyễn Văn A đã bắt đầu theo dõi bạn.',
-    time: '2 phút trước',
-    action: 'follow', // hiện nút "Theo dõi lại"
-    isFollowing: false,
-  },
-  {
-    id: '2',
-    type: 'security',
-    avatar: 'security',
-    title: 'Cảnh báo bảo mật',
-    subtitle: 'Phát hiện đăng nhập mới trên thiết bị lạ.',
-    time: '15 phút trước',
-    action: 'more',
-    unread: true,
-  },
-  {
-    id: '3',
-    type: 'like',
-    avatar: null,
-    title: 'Trần Thị B đã thích bài viết của bạn.',
-    time: '1 giờ trước',
-    action: 'thumbnail',
-  },
-  {
-    id: '4',
-    type: 'comment',
-    avatar: null,
-    title: 'Le Van C đã bình luận: "Bài viết rất hữu ích!"',
-    time: '3 giờ trước',
-    action: 'thumbnail',
-  },
-  {
-    id: '5',
-    type: 'mention',
-    avatar: null,
-    title: 'Hoàng D đã nhắc đến bạn trong một bình luận.',
-    time: 'Hôm qua',
-    action: 'more',
-  },
-];
+const normalizeNotification = (raw) => {
+  const type = String(raw?.type ?? raw?.kind ?? '').toLowerCase();
+  const id = String(raw?.id ?? raw?.reportId ?? raw?.notificationId ?? Math.random());
+  const title = raw?.title ?? raw?.reason ?? 'Thông báo hệ thống';
+  const subtitle = raw?.content ?? raw?.body ?? raw?.description ?? null;
+  const time = raw?.time ?? raw?.createdAt ?? raw?.createdDate ?? '';
+
+  const followerId =
+    raw?.followerId ??
+    raw?.actorId ??
+    raw?.fromUserId ??
+    raw?.userId ??
+    raw?.senderId ??
+    raw?.actor?.id;
+
+  const isFollowing = Boolean(raw?.isFollowing ?? raw?.following ?? false);
+
+  // Tùy backend, "follow" có thể được trả về khi có followerId
+  const canFollow = type.includes('follow') || followerId;
+
+  return {
+    id: id || String(Math.random()),
+    type: type || 'user',
+    title,
+    subtitle,
+    time,
+    unread: Boolean(raw?.unread ?? raw?.isUnread ?? raw?.read === false),
+    action: canFollow ? 'follow' : 'more',
+    isFollowing,
+    followerId: followerId ? String(followerId) : null,
+    raw,
+  };
+};
 
 // ─── Icons ───────────────────────────────────────────────────
 const IconUser = () => <Text style={{ fontSize: 20 }}>👤</Text>;
@@ -118,8 +106,8 @@ const Thumbnail = () => (
 );
 
 // ─── Notification Item ────────────────────────────────────────
-const NotifItem = ({ item }) => {
-  const [isFollowing, setIsFollowing] = useState(item.isFollowing || false);
+const NotifItem = ({ item, onToggleFollow }) => {
+  const [isFollowing, setIsFollowing] = useState(Boolean(item.isFollowing || false));
 
   return (
     <TouchableOpacity
@@ -145,7 +133,19 @@ const NotifItem = ({ item }) => {
 
       {/* Right action */}
       {item.action === 'follow' && (
-        <FollowButton isFollowing={isFollowing} onPress={() => setIsFollowing(!isFollowing)} />
+        <FollowButton
+          isFollowing={isFollowing}
+          onPress={async () => {
+            const prev = isFollowing;
+            const next = !prev;
+            setIsFollowing(next);
+            try {
+              await onToggleFollow?.(item);
+            } catch {
+              setIsFollowing(prev);
+            }
+          }}
+        />
       )}
       {item.action === 'thumbnail' && <Thumbnail />}
       {item.action === 'more' && (
@@ -159,18 +159,72 @@ const NotifItem = ({ item }) => {
 
 // ─── Main Screen ──────────────────────────────────────────────
 export default function NotificationScreen() {
+  const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const response = await userService.getMyReports(0, 20);
+        // Hỗ trợ bóc tách dữ liệu linh hoạt từ nhiều định dạng response của backend
+        const items =
+          response?.content ??
+          response?.data?.content ??
+          response?.items ??
+          response?.data ??
+          (Array.isArray(response) ? response : []);
+        if (!mounted) return;
+        const normalized = Array.isArray(items) ? items.map(normalizeNotification) : [];
+        setNotifications(normalized);
+      } catch {
+        if (mounted) setNotifications([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator color="#000" />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {/* List */}
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {NOTIFICATIONS.map((item, index) => (
-          <View key={item.id}>
-            <NotifItem item={item} />
-            {/* Divider */}
-            {index < NOTIFICATIONS.length - 1 && <View className="mx-4 h-px bg-gray-100" />}
+      <FlatList
+        data={notifications}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        renderItem={({ item, index }) => (
+          <NotifItem
+            item={item}
+            onToggleFollow={async (notif) => {
+              if (!notif.followerId) return;
+              try {
+                await userService.follow(notif.followerId);
+              } catch (e) {
+                Alert.alert('Thất bại', e.message);
+                throw e;
+              }
+            }}
+          />
+        )}
+        ItemSeparatorComponent={() => <View className="mx-4 h-px bg-gray-100" />}
+        ListEmptyComponent={
+          <View className="items-center py-16">
+            <Text className="text-sm text-gray-400">Không có thông báo</Text>
           </View>
-        ))}
-      </ScrollView>
+        }
+      />
 
       {/* Bottom Tab */}
       <BottomTab />

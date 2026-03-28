@@ -1,41 +1,8 @@
-import { useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-
-// ─── Fake Data ────────────────────────────────────────────────
-const REPORTS = [
-  {
-    id: '1',
-    reason: 'NỘI DUNG KHÔNG PHÙ HỢP',
-    reasonIcon: '⚠️',
-    time: 'Báo cáo 1h trước',
-    username: 'linh_nk',
-    caption: 'Đây là link lừa đảo: scam.com',
-    hasImage: true,
-    highlighted: true,
-  },
-  {
-    id: '2',
-    reason: 'SPAM',
-    reasonIcon: '🚩',
-    time: 'Báo cáo 3h trước',
-    username: 'bot',
-    caption: 'Đây là bot spam comment khắp nơi',
-    hasImage: false,
-    highlighted: false,
-  },
-  {
-    id: '3',
-    reason: 'BẠO LỰC',
-    reasonIcon: '⚠️',
-    time: 'Báo cáo 5h trước',
-    username: 'user_xyz',
-    caption: 'Nội dung có tính chất bạo lực',
-    hasImage: true,
-    highlighted: false,
-  },
-];
+import { adminService } from '@/services/adminService';
 
 // ─── Report Card ──────────────────────────────────────────────
 const ReportCard = ({ item, onIgnore, onDelete }) => (
@@ -93,15 +60,59 @@ const ReportCard = ({ item, onIgnore, onDelete }) => (
 // ─── Main Screen ──────────────────────────────────────────────
 export default function AdminContentScreen() {
   const navigation = useNavigation();
-  const [reports, setReports] = useState(REPORTS);
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const normalizeReports = useCallback((payload) => {
+    const items = payload?.content ?? payload?.items ?? payload ?? [];
+    if (!Array.isArray(items)) return [];
+    return items.map((r) => ({
+      id: String(r?.id ?? ''),
+      reason: r?.title ?? 'BÁO CÁO',
+      reasonIcon: '⚠️',
+      time: r?.createdAt ?? '',
+      username: r?.username ?? 'unknown',
+      caption: r?.content ?? '',
+      hasImage: false,
+      highlighted: false,
+      raw: r,
+    }));
+  }, []);
+
+  const loadReports = useCallback(async () => {
+    const payload = await adminService.getAllReports(0, 50);
+    setReports(normalizeReports(payload));
+  }, [normalizeReports]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        await loadReports();
+      } catch {
+        if (mounted) setReports([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [loadReports]);
 
   const handleIgnore = (id) => {
     setReports((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const handleDelete = (id) => {
-    setReports((prev) => prev.filter((r) => r.id !== id));
-    console.log('Đã xoá bài viết:', id);
+  const handleDelete = async (id) => {
+    try {
+      // Nếu backend có endpoint xoá report, dùng report id.
+      await adminService.deleteReport(id);
+      await loadReports();
+    } catch (e) {
+      Alert.alert('Thất bại', e.message);
+    }
   };
 
   return (
@@ -126,6 +137,13 @@ export default function AdminContentScreen() {
         )}
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          loading ? (
+            <View className="items-center py-6">
+              <ActivityIndicator color="#000" />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View className="items-center py-24">
             <Text style={{ fontSize: 40 }}>✅</Text>

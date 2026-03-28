@@ -2,25 +2,31 @@ import { useState } from 'react';
 import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import PostOptionsModal from '@/components/PostOptionsModal';
+import { userService } from '@/services/userService';
 
 const { width } = Dimensions.get('window');
 
 const IconHeart = ({ filled }) => <Text style={{ fontSize: 22 }}>{filled ? '❤️' : '🤍'}</Text>;
 const IconComment = () => <Text style={{ fontSize: 22 }}>💬</Text>;
 const IconShare = () => <Text style={{ fontSize: 22 }}>➤</Text>;
-const IconBookmark = ({ filled }) => <Text style={{ fontSize: 22 }}>{filled ? '🔖' : '🏷️'}</Text>;
 const IconMore = () => <Text style={{ fontWeight: '500', color: '#555' }}>•••</Text>;
 
 export default function PostCard({ post }) {
   const navigation = useNavigation();
   const [liked, setLiked] = useState(post.liked);
-  const [saved, setSaved] = useState(post.saved);
   const [likes, setLikes] = useState(post.likes);
   const [showOptions, setShowOptions] = useState(false);
 
-  const toggleLike = () => {
-    setLiked(!liked);
-    setLikes(liked ? likes - 1 : likes + 1);
+  const toggleLike = async () => {
+    const nextLiked = !liked;
+    setLiked(nextLiked);
+    setLikes(nextLiked ? likes + 1 : likes - 1);
+    try {
+      await userService.likePost(post.id);
+    } catch {
+      setLiked(!nextLiked);
+      setLikes(nextLiked ? likes - 1 : likes + 1);
+    }
   };
 
   return (
@@ -59,9 +65,6 @@ export default function PostCard({ post }) {
           <IconShare />
         </TouchableOpacity>
         <View className="flex-1" />
-        <TouchableOpacity onPress={() => setSaved(!saved)} activeOpacity={0.8}>
-          <IconBookmark filled={saved} />
-        </TouchableOpacity>
       </View>
 
       {/* Likes */}
@@ -72,8 +75,8 @@ export default function PostCard({ post }) {
       {/* Caption */}
       <View className="px-4">
         <Text className="text-sm text-gray-900">
-          <Text className="font-semibold">{post.username} </Text>
-          {post.caption}
+          <Text className="font-semibold">{post.username || post.title} </Text>
+          {post.content}
         </Text>
       </View>
 
@@ -83,7 +86,13 @@ export default function PostCard({ post }) {
         visible={showOptions}
         onClose={() => setShowOptions(false)}
         post={post}
-        onDelete={(id) => console.log('Xoá bài:', id)}
+        onDelete={async (id) => {
+          try {
+            await userService.deletePost(id);
+          } catch (e) {
+            console.warn('Xoá bài thất bại:', e.message);
+          }
+        }}
       />
     </View>
   );

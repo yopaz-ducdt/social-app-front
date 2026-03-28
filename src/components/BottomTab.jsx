@@ -5,17 +5,17 @@ import { useNavigation } from '@react-navigation/native';
 // Thay bằng vector-icons nếu có (ví dụ: react-native-vector-icons/Ionicons)
 const Icons = {
   Home: { active: '🏠', inactive: '🏡' },
-  search: { active: '🔍', inactive: '🔍' },
-  add: { active: '➕', inactive: '➕' },
-  reels: { active: '🎬', inactive: '🎬' },
+  CreatePost: { active: '➕', inactive: '➕' },
+  Notification: { active: '🔔', inactive: '🔔' },
+  Profile: { active: '👤', inactive: '👤' },
   Settings: { active: '⚙️', inactive: '⚙️' },
 };
 
 const TAB_ITEMS = [
   { key: 'Home', label: 'Trang chủ' },
-  { key: 'search', label: 'Tìm kiếm' },
-  { key: 'add', label: 'Đăng bài' },
-  { key: 'reels', label: 'Reels' },
+  { key: 'CreatePost', label: 'Đăng bài' },
+  { key: 'Notification', label: 'Thông báo' },
+  { key: 'Profile', label: 'Hồ sơ' },
   { key: 'Settings', label: 'Cài đặt' },
 ];
 
@@ -29,10 +29,10 @@ const TAB_ITEMS = [
  * Cách dùng:
  * <BottomTab activeTab={activeTab} onTabPress={(key) => setActiveTab(key)} />
  */
-export default function BottomTab() {
+export default function BottomTab({ activeTab: activeTabProp = 'Home' }) {
   const navigation = useNavigation();
 
-  const [activeTab, setActiveTab] = useState('Home');
+  const [activeTab, setActiveTab] = useState(activeTabProp);
 
   const handlePressTab = (key) => {
     navigation.navigate(key);

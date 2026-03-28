@@ -1,12 +1,8 @@
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-
-// ─── Data ─────────────────────────────────────────────────────
-const STATS = [
-  { id: 'users', icon: '👥', value: '12.4k', label: 'Tổng users' },
-  { id: 'reports', icon: 'ℹ️', value: '34', label: 'Phiếu tố cáo' },
-];
+import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { adminService } from '@/services/adminService';
 
 const MODULES = [
   {
@@ -23,38 +19,48 @@ const MODULES = [
     desc: 'Xem xét báo cáo, xoá bài viết vi phạm',
     screen: 'AdminContent',
   },
-  {
-    id: 'email',
-    icon: '✉️',
-    label: 'Nhật ký dịch vụ email',
-    desc: 'Lịch sử email tự động của hệ thống',
-    screen: 'AdminEmail',
-  },
 ];
 
-// ─── Bottom Tab Admin ─────────────────────────────────────────
-const AdminBottomTab = ({ active, onPress }) => (
-  <View className="flex-row border-t border-gray-100 bg-white px-6 pb-5 pt-3">
-    <TouchableOpacity
-      className="flex-1 items-center"
-      onPress={() => onPress('dashboard')}
-      activeOpacity={0.7}>
-      <Text style={{ fontSize: 24 }}>⊞</Text>
-      {active === 'dashboard' && <View className="mt-1 h-1 w-1 rounded-full bg-gray-900" />}
-    </TouchableOpacity>
-    <TouchableOpacity
-      className="flex-1 items-center"
-      onPress={() => onPress('settings')}
-      activeOpacity={0.7}>
-      <Text style={{ fontSize: 24 }}>⚙️</Text>
-      {active === 'settings' && <View className="mt-1 h-1 w-1 rounded-full bg-gray-900" />}
-    </TouchableOpacity>
-  </View>
-);
 
 // ─── Main Screen ──────────────────────────────────────────────
 export default function AdminDashboardScreen() {
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
+
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalReports, setTotalReports] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!isFocused) return;
+
+    (async () => {
+      try {
+        setLoading(true);
+        const [usersPayload, reportsPayload] = await Promise.all([
+          adminService.getUsers('', 0, 1),
+          adminService.getAllReports(0, 1),
+        ]);
+        if (!mounted) return;
+        setTotalUsers(usersPayload?.totalElements ?? usersPayload?.content?.length ?? usersPayload?.length ?? 0);
+        setTotalReports(reportsPayload?.totalElements ?? reportsPayload?.content?.length ?? reportsPayload?.length ?? 0);
+      } catch {
+        // ignore
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [isFocused]);
+
+  const STATS = [
+    { id: 'users', icon: '👥', value: loading ? '...' : totalUsers.toLocaleString(), label: 'Tổng users' },
+    { id: 'reports', icon: 'ℹ️', value: loading ? '...' : totalReports.toLocaleString(), label: 'Phiếu tố cáo' },
+  ];
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -99,9 +105,8 @@ export default function AdminDashboardScreen() {
                 key={mod.id}
                 onPress={() => navigation.navigate(mod.screen)}
                 activeOpacity={0.7}
-                className={`flex-row items-center bg-white px-4 py-4 ${
-                  index < MODULES.length - 1 ? 'border-b border-gray-100' : ''
-                }`}>
+                className={`flex-row items-center bg-white px-4 py-4 ${index < MODULES.length - 1 ? 'border-b border-gray-100' : ''
+                  }`}>
                 {/* Icon */}
                 <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
                   <Text style={{ fontSize: 18 }}>{mod.icon}</Text>
@@ -120,9 +125,6 @@ export default function AdminDashboardScreen() {
           </View>
         </View>
       </ScrollView>
-
-      {/* ── Bottom Tab ── */}
-      <AdminBottomTab active="dashboard" onPress={(key) => console.log(key)} />
     </SafeAreaView>
   );
 }

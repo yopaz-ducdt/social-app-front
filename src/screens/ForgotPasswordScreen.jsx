@@ -7,16 +7,29 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { authService } from '@/services/authService';
 
 export default function ForgotPasswordScreen() {
   const navigation = useNavigation();
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSend = () => {
-    console.log('Gửi link reset mật khẩu đến:', email);
+  const handleSend = async () => {
+    if (!email.trim()) return;
+    try {
+      setLoading(true);
+      await authService.forgotPassword(email.trim());
+      Alert.alert('Thành công', 'Nếu email tồn tại, hệ thống sẽ gửi hướng dẫn đặt lại mật khẩu.');
+    } catch (e) {
+      Alert.alert('Thất bại', e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,6 +79,7 @@ export default function ForgotPasswordScreen() {
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  editable={!loading}
                 />
               </View>
             </View>
@@ -74,11 +88,15 @@ export default function ForgotPasswordScreen() {
             <TouchableOpacity
               className={`mb-6 items-center rounded-lg py-4 ${email.trim() ? 'bg-black' : 'bg-gray-300'}`}
               onPress={handleSend}
-              disabled={!email.trim()}
+              disabled={!email.trim() || loading}
               activeOpacity={0.85}>
-              <Text className="text-base font-bold uppercase tracking-widest text-white">
-                Gửi Link
-              </Text>
+              {loading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text className="text-base font-bold uppercase tracking-widest text-white">
+                  Gửi Link
+                </Text>
+              )}
             </TouchableOpacity>
 
             {/* Back to login */}

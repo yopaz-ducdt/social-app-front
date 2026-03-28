@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Linking } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '@/context/AuthContext';
 
 // ─── Data ─────────────────────────────────────────────────────
 const SETTINGS = [
@@ -9,26 +10,26 @@ const SETTINGS = [
     section: 'QUẢN LÝ TÀI KHOẢN',
     items: [
       { id: 'profile', icon: '👤', label: 'Thông tin cá nhân', screen: 'EditProfile' },
-      { id: 'password', icon: '🔒', label: 'Mật khẩu và Bảo mật', screen: 'ChangePassword' },
-      { id: '2fa', icon: '🛡️', label: 'Xác nhận 2 bước', screen: 'TwoFactor' },
+      { id: 'password', icon: '🔒', label: 'Mật khẩu và Bảo mật' },
+      { id: '2fa', icon: '🛡️', label: 'Xác nhận 2 bước' },
     ],
   },
   {
     section: 'QUYỀN RIÊNG TƯ VÀ BẢO AN TOÀN',
     items: [
-      { id: 'visibility', icon: '👁️', label: 'Hiển thị hồ sơ', screen: 'ProfileVisibility' },
-      { id: 'block', icon: '🚫', label: 'Chặn người dùng', screen: 'BlockedUsers' },
+      { id: 'visibility', icon: '👁️', label: 'Hiển thị hồ sơ' },
+      { id: 'block', icon: '🚫', label: 'Chặn người dùng' },
     ],
   },
   {
     section: 'ƯA THÍCH',
-    items: [{ id: 'notif', icon: '🔔', label: 'Thông báo', screen: 'NotificationSetting' }],
+    items: [{ id: 'notif', icon: '🔔', label: 'Thông báo' }],
   },
   {
     section: 'HỖ TRỢ',
     items: [
       { id: 'help', icon: '❓', label: 'Trung tâm hỗ trợ', url: 'https://support.example.com' },
-      { id: 'legal', icon: 'ℹ️', label: 'Quyền và Thông tin pháp lý', screen: 'Legal' },
+      { id: 'legal', icon: 'ℹ️', label: 'Quyền và Thông tin pháp lý' },
     ],
   },
 ];
@@ -42,6 +43,8 @@ const SettingItem = ({ item, isLast }) => {
       Linking.openURL(item.url);
     } else if (item.screen) {
       navigation.navigate(item.screen);
+    } else {
+      Alert.alert('Thông báo', 'Tính năng đang phát triển.');
     }
   };
 
@@ -81,6 +84,7 @@ const SettingSection = ({ section, items }) => (
 // ─── Main Screen ──────────────────────────────────────────────
 export default function SettingsScreen() {
   const navigation = useNavigation();
+  const { logout } = useAuth();
   const [search, setSearch] = useState('');
 
   const filtered = SETTINGS.map((group) => ({
@@ -88,9 +92,8 @@ export default function SettingsScreen() {
     items: group.items.filter((item) => item.label.toLowerCase().includes(search.toLowerCase())),
   })).filter((group) => group.items.length > 0);
 
-  const handleLogout = () => {
-    console.log('Đăng xuất');
-    navigation.navigate('Login');
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (

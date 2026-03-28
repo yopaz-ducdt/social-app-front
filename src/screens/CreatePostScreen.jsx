@@ -8,12 +8,16 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Alert,
+  Image,
+  ActionSheetIOS,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-
-// ─── Fake selected images ─────────────────────────────────────
-const INITIAL_IMAGES = [{ id: '1' }, { id: '2' }];
+import * as ImagePicker from 'expo-image-picker';
+import { userService } from '@/services/userService';
+import { useAuth } from '@/context/AuthContext';
 
 // ─── Extra options ────────────────────────────────────────────
 const OPTIONS = [
@@ -24,21 +28,93 @@ const OPTIONS = [
 
 export default function CreatePostScreen() {
   const navigation = useNavigation();
-  const [caption, setCaption] = useState('');
-  const [images, setImages] = useState(INITIAL_IMAGES);
+  const { user } = useAuth();
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [images, setImages] = useState([]);
+  const [posting, setPosting] = useState(false);
 
   const handleRemoveImage = (id) => {
     setImages((prev) => prev.filter((img) => img.id !== id));
   };
 
-  const handleAddImage = () => {
-    // Tích hợp image picker ở đây
-    console.log('Mở thư viện ảnh');
+  const openCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Quyền truy cập', 'Ứng dụng cần quyền truy cập Camera để chụp ảnh.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.length) {
+      const asset = result.assets[0];
+      const newImage = {
+        id: Date.now().toString(),
+        uri: asset.uri,
+        type: asset.mimeType ?? 'image/jpeg',
+        name: asset.fileName ?? `image_${Date.now()}.jpg`,
+      };
+      setImages((prev) => [...prev, newImage]);
+    }
   };
 
-  const handlePost = () => {
-    console.log('Đăng bài:', { caption, images });
-    navigation.goBack();
+  const openGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Quyền truy cập', 'Ứng dụng cần quyền truy cập Thư viện ảnh.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.length) {
+      const newImages = result.assets.map((asset, index) => ({
+        id: Date.now().toString() + index,
+        uri: asset.uri,
+        type: asset.mimeType ?? 'image/jpeg',
+        name: asset.fileName ?? `image_${Date.now()}_${index}.jpg`,
+      }));
+      setImages((prev) => [...prev, ...newImages]);
+    }
+  };
+
+  const handleAddImage = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Huỷ', 'Chụp ảnh', 'Chọn từ thư viện'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) openCamera();
+          else if (buttonIndex === 2) openGallery();
+        },
+      );
+    } else {
+      Alert.alert('Thêm ảnh', '', [
+        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Chụp ảnh', onPress: openCamera },
+        { text: 'Chọn từ thư viện', onPress: openGallery },
+      ]);
+    }
+  };
+
+  const handlePost = async () => {
+    try {
+      setPosting(true);
+      const postDTO = { title: title.trim(), content: content.trim() };
+      await userService.createPost(postDTO, images);
+      Alert.alert('Thành công', 'Đã đăng bài.');
+      navigation.goBack();
+    } catch (e) {
+      Alert.alert('Thất bại', e.message);
+    } finally {
+      setPosting(false);
+    }
   };
 
   return (
@@ -54,10 +130,14 @@ export default function CreatePostScreen() {
           <Text className="flex-1 text-center text-base font-bold text-gray-900">Tạo bài viết</Text>
           <TouchableOpacity
             onPress={handlePost}
-            disabled={!caption.trim() && images.length === 0}
-            className={`rounded-lg px-4 py-1.5 ${caption.trim() || images.length > 0 ? 'bg-black' : 'bg-gray-300'}`}
+            disabled={posting || (!title.trim() && !content.trim() && images.length === 0)}
+            className={`rounded-lg px-4 py-1.5 ${title.trim() || content.trim() || images.length > 0 ? 'bg-black' : 'bg-gray-300'}`}
             activeOpacity={0.85}>
-            <Text className="text-sm font-bold tracking-widest text-white">ĐĂNG</Text>
+            {posting ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text className="text-sm font-bold tracking-widest text-white">ĐĂNG</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -67,16 +147,25 @@ export default function CreatePostScreen() {
             <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-gray-200">
               <Text style={{ fontSize: 20 }}>👤</Text>
             </View>
-            <Text className="text-sm font-semibold text-gray-900">Phuc_nh</Text>
+            <Text className="text-sm font-semibold text-gray-900">{user?.username ?? 'Bạn'}</Text>
           </View>
 
-          {/* ── Caption input ── */}
+          {/* ── Title input ── */}
+          <TextInput
+            className="px-4 py-2 text-lg font-bold text-gray-900"
+            placeholder="Tiêu đề bài viết"
+            placeholderTextColor="#9ca3af"
+            value={title}
+            onChangeText={setTitle}
+          />
+
+          {/* ── Content input ── */}
           <TextInput
             className="min-h-20 px-4 text-base text-gray-900"
             placeholder="Bạn đang nghĩ gì thế?"
             placeholderTextColor="#9ca3af"
-            value={caption}
-            onChangeText={setCaption}
+            value={content}
+            onChangeText={setContent}
             multiline
             textAlignVertical="top"
           />
@@ -103,9 +192,11 @@ export default function CreatePostScreen() {
                 }
                 return (
                   <View className="relative">
-                    <View className="h-24 w-24 items-center justify-center rounded-xl border border-gray-200 bg-gray-100">
-                      <Text style={{ fontSize: 24, color: '#d1d5db' }}>🖼️</Text>
-                    </View>
+                    <Image
+                      source={{ uri: item.uri }}
+                      className="h-24 w-24 rounded-xl border border-gray-200"
+                      resizeMode="cover"
+                    />
                     {/* Remove button */}
                     <TouchableOpacity
                       onPress={() => handleRemoveImage(item.id)}

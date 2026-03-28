@@ -1,74 +1,102 @@
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { View, Text, TouchableOpacity, ScrollView, FlatList } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomTab from '@/components/BottomTab';
 import PostCard from '@/components/PostCard';
+import { userService } from '@/services/userService';
+import { adaptPostList } from '@/utils/postAdapter';
 
-// ─── Fake Data ───────────────────────────────────────────────
-const STORIES = [
-  { id: '0', username: 'Tin của tôi', isMe: true },
-  { id: '1', username: 'phucnh' },
-  { id: '2', username: 'namnd' },
-  { id: '3', username: 'manhnd' },
-  { id: '4', username: 'linhpv' },
-  { id: '5', username: 'tuananh' },
-];
+const PAGE_SIZE = 10;
 
-const POSTS = [
-  {
-    id: '1',
-    username: 'ducdt',
-    location: 'Hà Đông, Hà Nội',
-    likes: 1234,
-    caption: 'Chúc mừng năm mới #happynewyear',
-    time: '2 giờ trước',
-    liked: false,
-    saved: false,
-  },
-  {
-    id: '2',
-    username: 'manhnd',
-    location: 'Hoàn Kiếm, Hà Nội',
-    likes: 856,
-    caption: 'Cuối tuần chill thôi 🌿 #weekend',
-    time: '5 giờ trước',
-    liked: true,
-    saved: false,
-  },
-  {
-    id: '3',
-    username: 'linhpv',
-    location: 'Đống Đa, Hà Nội',
-    likes: 421,
-    caption: 'Cà phê sáng ☕ ngon quá #coffee',
-    time: '1 ngày trước',
-    liked: false,
-    saved: true,
-  },
-];
-
-// ─── Icons ───────────────────────────────────────────────────
 const IconBell = () => <Text style={{ fontSize: 22 }}>🔔</Text>;
 
-// ─── Story Item ───────────────────────────────────────────────
-const StoryItem = ({ item }) => (
-  <TouchableOpacity className="mr-4 items-center" activeOpacity={0.8}>
-    {item.isMe ? (
-      <View className="mb-1 h-14 w-14 items-center justify-center rounded-full border border-dashed border-gray-400">
-        <Text className="text-2xl leading-none text-gray-400">+</Text>
-      </View>
-    ) : (
-      <View className="mb-1 h-14 w-14 rounded-full border-2 border-white bg-gray-200 shadow" />
-    )}
-    <Text className="text-center text-xs text-gray-600" numberOfLines={1} style={{ maxWidth: 56 }}>
-      {item.username}
-    </Text>
-  </TouchableOpacity>
-);
-
-// ─── Main Screen ──────────────────────────────────────────────
 export default function HomeScreen() {
   const navigation = useNavigation();
+
+  const [posts, setPosts] = useState([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(true);   // lần đầu
+  const [loadingMore, setLoadingMore] = useState(false); // load thêm
+  const [refreshing, setRefreshing] = useState(false);
+
+  const isFetchingRef = useRef(false); // chặn double-fetch
+
+  // ── Fetch một trang ─────────────────────────────────────
+  const fetchPage = useCallback(async (pageNumber) => {
+    const payload = await userService.getFeedPosts(pageNumber, PAGE_SIZE);
+    const newPosts = adaptPostList(payload);
+    return { newPosts, isLast: payload.last ?? newPosts.length < PAGE_SIZE };
+  }, []);
+
+  // ── Load lần đầu / refresh ───────────────────────────────
+  const loadInitial = useCallback(async () => {
+    try {
+      const { newPosts, isLast } = await fetchPage(0);
+      setPosts(newPosts);
+      setPage(0);
+      setHasMore(!isLast);
+    } catch (err) {
+      Alert.alert('Lỗi tải bảng tin', err.message);
+      setPosts([]);
+    }
+  }, [fetchPage]);
+
+  // ── Load thêm khi cuộn xuống ─────────────────────────────
+  const loadMore = useCallback(async () => {
+    if (isFetchingRef.current || !hasMore) return;
+    isFetchingRef.current = true;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const { newPosts, isLast } = await fetchPage(nextPage);
+      setPosts((prev) => [...prev, ...newPosts]);
+      setPage(nextPage);
+      setHasMore(!isLast);
+    } catch (err) {
+      Alert.alert('Lỗi tải thêm', err.message);
+    } finally {
+      setLoadingMore(false);
+      isFetchingRef.current = false;
+    }
+  }, [fetchPage, hasMore, page]);
+
+  // ── Mount ────────────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      await loadInitial();
+      setLoading(false);
+    })();
+  }, []);
+
+  // ── Render ───────────────────────────────────────────────
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View className="items-center py-4">
+        <ActivityIndicator color="#000" />
+      </View>
+    );
+  };
+
+  const renderEmpty = () => {
+    if (loading) return null;
+    return (
+      <View className="items-center py-16">
+        <Text className="text-gray-400">Chưa có bài viết nào</Text>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -78,32 +106,41 @@ export default function HomeScreen() {
           <Text className="text-xs font-bold text-white">S</Text>
         </View>
         <Text className="flex-1 text-base font-bold text-gray-900">Social App</Text>
-        <TouchableOpacity className="p-1" onPress={() => navigation.navigate('Notification')}>
+        <TouchableOpacity className="mr-3 p-1" onPress={() => navigation.navigate('Search')} activeOpacity={0.7}>
+          <Text style={{ fontSize: 22 }}>🔍</Text>
+        </TouchableOpacity>
+        <TouchableOpacity className="p-1" onPress={() => navigation.navigate('Notification')} activeOpacity={0.7}>
           <IconBell />
         </TouchableOpacity>
       </View>
 
       {/* Feed */}
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Stories */}
-        <View className="border-b border-gray-100 py-4">
-          <FlatList
-            data={STORIES}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 16 }}
-            renderItem={({ item }) => <StoryItem item={item} />}
-          />
+      {loading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#000" />
         </View>
-
-        {/* Posts */}
-        <View className="pt-4">
-          {POSTS.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
-        </View>
-      </ScrollView>
+      ) : (
+        <FlatList
+          data={posts}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={({ item }) => <PostCard post={item} />}
+          ListEmptyComponent={renderEmpty}
+          ListFooterComponent={renderFooter}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={async () => {
+                setRefreshing(true);
+                await loadInitial();
+                setRefreshing(false);
+              }}
+            />
+          }
+        />
+      )}
 
       {/* FAB */}
       <TouchableOpacity
@@ -113,7 +150,6 @@ export default function HomeScreen() {
         <Text className="text-2xl leading-none text-white">+</Text>
       </TouchableOpacity>
 
-      {/* Bottom Tab */}
       <BottomTab />
     </SafeAreaView>
   );

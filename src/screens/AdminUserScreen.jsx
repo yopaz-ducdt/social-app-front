@@ -1,16 +1,16 @@
-import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-
-// ─── Fake Data ────────────────────────────────────────────────
-const USERS = [
-  { id: '1', username: 'phuc_nh', email: 'phucnh@gmail.com', status: 'active' },
-  { id: '2', username: 'linh_nk', email: 'nk@gmail.com', status: 'blocked' },
-  { id: '3', username: 'nam_nd', email: 'nam.nd@gmail.com', status: 'active' },
-  { id: '4', username: 'manh_nd', email: 'manh@gmail.com', status: 'active' },
-  { id: '5', username: 'duc_dd', email: 'duc@gmail.com', status: 'blocked' },
-];
+import { adminService } from '@/services/adminService';
 
 const TABS = [
   { key: 'all', label: 'Tất cả' },
@@ -19,7 +19,7 @@ const TABS = [
 ];
 
 // ─── User Item ────────────────────────────────────────────────
-const UserItem = ({ user, onToggle }) => {
+const UserItem = ({ user, onToggle, isToggling }) => {
   const isBlocked = user.status === 'blocked';
 
   return (
@@ -49,11 +49,15 @@ const UserItem = ({ user, onToggle }) => {
       {/* Lock/Unlock button */}
       <TouchableOpacity
         onPress={() => onToggle(user.id)}
+        disabled={isToggling}
         activeOpacity={0.8}
-        className={`h-10 w-10 items-center justify-center rounded-full border-2 ${
-          isBlocked ? 'border-gray-900 bg-gray-900' : 'border-gray-300'
-        }`}>
-        <Text style={{ fontSize: 16 }}>{isBlocked ? '🔒' : '🔓'}</Text>
+        className={`h-10 w-10 items-center justify-center rounded-full border-2 ${isBlocked ? 'border-gray-900 bg-gray-900' : 'border-gray-300'
+          }`}>
+        {isToggling ? (
+          <ActivityIndicator size="small" color={isBlocked ? '#fff' : '#000'} />
+        ) : (
+          <Text style={{ fontSize: 16 }}>{isBlocked ? '🔒' : '🔓'}</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -64,26 +68,100 @@ export default function AdminUsersScreen() {
   const navigation = useNavigation();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('all');
-  const [users, setUsers] = useState(USERS);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [togglingId, setTogglingId] = useState(null);
 
-  const handleToggle = (id) => {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === id ? { ...u, status: u.status === 'active' ? 'blocked' : 'active' } : u
-      )
-    );
+  const normalizeUsers = (payload) => {
+    const items = payload?.content ?? payload?.items ?? payload ?? [];
+    if (!Array.isArray(items)) return [];
+    return items.map((u) => ({
+      id: String(u?.id ?? ''),
+      username: [u?.firstName, u?.lastName].filter(Boolean).join(' ') || 'unknown',
+      email: u?.email ?? '',
+      gender: u?.gender ?? '',
+      status:
+        u?.enabled === false ||
+          u?.enabled === 'false' ||
+          u?.accountNonLocked === false ||
+          u?.locked === true ||
+          u?.isLocked === true ||
+          u?.isActive === false ||
+          u?.status === 'blocked'
+          ? 'blocked'
+          : 'active',
+      raw: u,
+    }));
   };
 
-  const filtered = users.filter((u) => {
-    const matchSearch =
-      u.username.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase());
-    const matchTab =
-      activeTab === 'all' ||
-      (activeTab === 'active' && u.status === 'active') ||
-      (activeTab === 'blocked' && u.status === 'blocked');
-    return matchSearch && matchTab;
-  });
+  const loadUsers = async () => {
+    const payload = await adminService.getUsers(search.trim(), 0, 50);
+    setUsers(normalizeUsers(payload));
+  };
+
+  console.log(users)
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        await loadUsers();
+      } catch {
+        if (mounted) setUsers([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleToggle = async (id) => {
+    if (togglingId) return; // Prevent multiple clicks
+    setTogglingId(id);
+
+    // Tự động thay đổi UI để phản hồi nhanh hơn (Optimistic Update)
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id === id) {
+          return { ...u, status: u.status === 'blocked' ? 'active' : 'blocked' };
+        }
+        return u;
+      })
+    );
+
+    try {
+      await adminService.toggleUser(id);
+    } catch (e) {
+      // Rollback nếu API lỗi
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id === id) {
+            return { ...u, status: u.status === 'blocked' ? 'active' : 'blocked' };
+          }
+          return u;
+        })
+      );
+      Alert.alert('Thất bại', e.message);
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const filtered = useMemo(() => {
+    return users.filter((u) => {
+      const matchSearch =
+        u.username.toLowerCase().includes(search.toLowerCase()) ||
+        u.email.toLowerCase().includes(search.toLowerCase());
+      const matchTab =
+        activeTab === 'all' ||
+        (activeTab === 'active' && u.status === 'active') ||
+        (activeTab === 'blocked' && u.status === 'blocked');
+      return matchSearch && matchTab;
+    });
+  }, [users, search, activeTab]);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -125,13 +203,11 @@ export default function AdminUsersScreen() {
             key={tab.key}
             onPress={() => setActiveTab(tab.key)}
             activeOpacity={0.8}
-            className={`rounded-full border px-4 py-1.5 ${
-              activeTab === tab.key ? 'border-gray-900 bg-gray-900' : 'border-gray-200 bg-white'
-            }`}>
-            <Text
-              className={`text-xs font-semibold ${
-                activeTab === tab.key ? 'text-white' : 'text-gray-600'
+            className={`rounded-full border px-4 py-1.5 ${activeTab === tab.key ? 'border-gray-900 bg-gray-900' : 'border-gray-200 bg-white'
               }`}>
+            <Text
+              className={`text-xs font-semibold ${activeTab === tab.key ? 'text-white' : 'text-gray-600'
+                }`}>
               {tab.label}
             </Text>
           </TouchableOpacity>
@@ -142,7 +218,20 @@ export default function AdminUsersScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <UserItem user={item} onToggle={handleToggle} />}
+        renderItem={({ item }) => (
+          <UserItem
+            user={item}
+            onToggle={handleToggle}
+            isToggling={togglingId === item.id}
+          />
+        )}
+        ListHeaderComponent={
+          loading ? (
+            <View className="items-center py-6">
+              <ActivityIndicator color="#000" />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View className="items-center py-16">
             <Text className="text-sm text-gray-400">Không tìm thấy người dùng</Text>

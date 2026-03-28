@@ -8,9 +8,13 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { userService } from '@/services/userService';
+import { useAuth } from '@/context/AuthContext';
 
 // ─── Options ──────────────────────────────────────────────────
 const OPTIONS = [
@@ -22,15 +26,19 @@ const OPTIONS = [
 export default function EditPostScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const { user } = useAuth();
 
-  // Nhận post data từ navigation params, fallback fake data
+  // Nhận post data từ navigation params
   const post = route.params?.post ?? {
-    caption: 'alo',
-    images: [{ id: '1' }, { id: '2' }],
+    title: '',
+    content: '',
+    images: [],
   };
 
-  const [caption, setCaption] = useState(post.caption);
+  const [title, setTitle] = useState(post.title ?? '');
+  const [content, setContent] = useState(post.content ?? '');
   const [images, setImages] = useState(post.images ?? []);
+  const [saving, setSaving] = useState(false);
 
   const handleRemoveImage = (id) => {
     setImages((prev) => prev.filter((img) => img.id !== id));
@@ -40,9 +48,17 @@ export default function EditPostScreen() {
     console.log('Mở thư viện ảnh');
   };
 
-  const handleSave = () => {
-    console.log('Lưu chỉnh sửa:', { caption, images });
-    navigation.goBack();
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      await userService.updatePost(post.id, { title: title.trim(), content: content.trim() });
+      Alert.alert('Thành công', 'Đã lưu thay đổi.');
+      navigation.goBack();
+    } catch (e) {
+      Alert.alert('Thất bại', e.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -72,14 +88,23 @@ export default function EditPostScreen() {
             <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-gray-200">
               <Text style={{ fontSize: 20 }}>👤</Text>
             </View>
-            <Text className="text-sm font-semibold text-gray-900">duc_dt</Text>
+            <Text className="text-sm font-semibold text-gray-900">{user?.username ?? 'Bạn'}</Text>
           </View>
 
-          {/* ── Caption input ── */}
+          {/* ── Title input ── */}
+          <TextInput
+            className="px-4 py-2 text-lg font-bold text-gray-900"
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Tiêu đề bài viết"
+            placeholderTextColor="#9ca3af"
+          />
+
+          {/* ── Content input ── */}
           <TextInput
             className="min-h-20 px-4 text-base text-gray-900"
-            value={caption}
-            onChangeText={setCaption}
+            value={content}
+            onChangeText={setContent}
             placeholder="Bạn đang nghĩ gì thế?"
             placeholderTextColor="#9ca3af"
             multiline
