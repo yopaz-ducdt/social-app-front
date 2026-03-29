@@ -18,13 +18,6 @@ import PostOptionsModal from '@/components/PostOptionsModal';
 
 const { width } = Dimensions.get('window');
 
-const getNested = (obj, path) => {
-  try {
-    return path.split('.').reduce((acc, key) => acc?.[key], obj);
-  } catch {
-    return undefined;
-  }
-};
 
 // Normalize response shape theo PostResponse schema API
 const adaptPostDetail = (raw) => {
@@ -38,6 +31,7 @@ const adaptPostDetail = (raw) => {
     author: {
       username: raw?.username ?? raw?.author?.username ?? '',
       id: raw?.authorId ?? raw?.userId ?? null,
+      avatarUrl: raw?.author?.image?.url ?? raw?.image?.url ?? null,
     },
     isFollowing: Boolean(raw?.isFollowing ?? false),
     liked: Boolean(raw?.liked ?? raw?.isLiked ?? false),
@@ -70,11 +64,15 @@ const IconShare = () => <Text style={{ fontSize: 22 }}>➤</Text>;
 const IconMore = () => <Text style={{ fontWeight: '500', color: '#555' }}>•••</Text>;
 
 // ─── Avatar placeholder ───────────────────────────────────────
-const Avatar = ({ size = 10 }) => (
+const Avatar = ({ size = 10, uri = null }) => (
   <View
-    className={`items-center justify-center rounded-full bg-gray-200`}
+    className={`items-center justify-center rounded-full bg-gray-200 overflow-hidden`}
     style={{ width: size * 4, height: size * 4 }}>
-    <Text style={{ fontSize: size * 1.6 }}>👤</Text>
+    {uri ? (
+      <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+    ) : (
+      <Text style={{ fontSize: size * 1.6 }}>👤</Text>
+    )}
   </View>
 );
 
@@ -193,7 +191,6 @@ export default function PostDetailScreen() {
 
   const toggleLike = async () => {
     if (!postId) return;
-    // Optimistic UI
     const nextLiked = !captionLiked;
     setCaptionLiked(nextLiked);
     setLikes((prev) => (nextLiked ? prev + 1 : Math.max(0, prev - 1)));
@@ -202,7 +199,6 @@ export default function PostDetailScreen() {
       await userService.likePost(postId);
       await refresh();
     } catch {
-      // rollback optimistic state
       const rollbackLiked = !nextLiked;
       setCaptionLiked(rollbackLiked);
       setLikes((prev) => (rollbackLiked ? prev + 1 : Math.max(0, prev - 1)));
@@ -226,22 +222,12 @@ export default function PostDetailScreen() {
   };
 
   const followId = adapted?.author?.id;
-  
+
   // Kiểm tra bằng id hoặc username để chắc chắn đó là mình
   const isMyPost = Boolean(
     (followId && (currentUser?.id === followId || currentUser?.userId === followId)) ||
     (currentUser?.username && adapted?.author?.username && currentUser.username === adapted.author.username)
   );
-
-  const toggleFollow = async () => {
-    if (!followId) return;
-    try {
-      setIsFollowing((v) => !v);
-      await userService.follow(followId);
-    } catch {
-      setIsFollowing((v) => !v);
-    }
-  };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -252,12 +238,12 @@ export default function PostDetailScreen() {
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* ── Post Header ── */}
           <View className="flex-row items-center px-4 py-3">
-            <Avatar size={10} />
+            <Avatar size={10} uri={adapted?.author?.avatarUrl} />
             <View className="ml-3 flex-1">
               <Text className="text-sm font-semibold text-gray-900">
                 {adapted?.author?.username ?? ''}
               </Text>
-              <Text className="text-xs text-gray-400">{adapted?.author?.username ?? ''}</Text>
+              <Text className="text-xs text-gray-400">@{adapted?.author?.username ?? ''}</Text>
             </View>
             {isMyPost ? (
               <TouchableOpacity
@@ -286,11 +272,11 @@ export default function PostDetailScreen() {
             style={{ width, height: width }}
             className="items-center justify-center border-b border-t border-gray-100 bg-gray-100 overflow-hidden">
             {adapted?.images?.[0]?.url ? (
-               <Image source={{ uri: adapted.images[0].url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              <Image source={{ uri: adapted.images[0].url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             ) : (
-               <View className="h-16 w-16 items-center justify-center rounded-xl border border-gray-300">
-                 <Text style={{ fontSize: 32 }}>🖼️</Text>
-               </View>
+              <View className="h-16 w-16 items-center justify-center rounded-xl border border-gray-300">
+                <Text style={{ fontSize: 32 }}>🖼️</Text>
+              </View>
             )}
           </View>
 

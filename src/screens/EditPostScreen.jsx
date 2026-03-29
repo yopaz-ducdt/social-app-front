@@ -10,9 +10,12 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Image,
+  ActionSheetIOS,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { userService } from '@/services/userService';
 import { useAuth } from '@/context/AuthContext';
 
@@ -44,14 +47,75 @@ export default function EditPostScreen() {
     setImages((prev) => prev.filter((img) => img.id !== id));
   };
 
+  const openCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Quyền truy cập', 'Ứng dụng cần quyền truy cập Camera để chụp ảnh.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.length) {
+      const asset = result.assets[0];
+      const newImage = {
+        id: Date.now().toString(),
+        uri: asset.uri,
+        type: asset.mimeType ?? 'image/jpeg',
+        name: asset.fileName ?? `image_${Date.now()}.jpg`,
+      };
+      setImages((prev) => [...prev, newImage]);
+    }
+  };
+
+  const openGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Quyền truy cập', 'Ứng dụng cần quyền truy cập Thư viện ảnh.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.length) {
+      const newImages = result.assets.map((asset, index) => ({
+        id: Date.now().toString() + index,
+        uri: asset.uri,
+        type: asset.mimeType ?? 'image/jpeg',
+        name: asset.fileName ?? `image_${Date.now()}_${index}.jpg`,
+      }));
+      setImages((prev) => [...prev, ...newImages]);
+    }
+  };
+
   const handleAddImage = () => {
-    console.log('Mở thư viện ảnh');
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Huỷ', 'Chụp ảnh', 'Chọn từ thư viện'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) openCamera();
+          else if (buttonIndex === 2) openGallery();
+        },
+      );
+    } else {
+      Alert.alert('Thêm ảnh', '', [
+        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Chụp ảnh', onPress: openCamera },
+        { text: 'Chọn từ thư viện', onPress: openGallery },
+      ]);
+    }
   };
 
   const handleSave = async () => {
     try {
       setSaving(true);
-      await userService.updatePost(post.id, { title: title.trim(), content: content.trim() });
+      await userService.updatePost(post.id, title.trim(), content.trim());
       Alert.alert('Thành công', 'Đã lưu thay đổi.');
       navigation.goBack();
     } catch (e) {
@@ -114,7 +178,7 @@ export default function EditPostScreen() {
           {/* ── Image picker row ── */}
           <View className="mb-6 mt-4 px-4">
             <FlatList
-              data={[{ id: 'add' }, ...images]}
+              data={[...images, { id: 'add' }]}
               keyExtractor={(item) => item.id}
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -133,9 +197,11 @@ export default function EditPostScreen() {
                 }
                 return (
                   <View className="relative">
-                    <View className="h-24 w-24 items-center justify-center rounded-xl border border-gray-200 bg-gray-100">
-                      <Text style={{ fontSize: 24, color: '#d1d5db' }}>🖼️</Text>
-                    </View>
+                    <Image
+                      source={{ uri: item.uri || item.url }}
+                      className="h-24 w-24 rounded-xl border border-gray-200"
+                      resizeMode="cover"
+                    />
                     <TouchableOpacity
                       onPress={() => handleRemoveImage(item.id)}
                       className="absolute -right-2 -top-2 h-6 w-6 items-center justify-center rounded-full bg-gray-800"

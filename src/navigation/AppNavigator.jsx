@@ -33,7 +33,7 @@ const makeHeader = ({ title, showBack, rightElement, showBorder } = {}) => ({
 });
 
 export default function AppNavigator() {
-  const { token, loading } = useAuth();
+  const { token, user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -50,50 +50,51 @@ export default function AppNavigator() {
         animation: 'slide_from_right',
       }}>
       {token ? (
-        <>
-          <Stack.Screen name="Home" component={HomeScreen} />
-
-          {/* ── Search Screen ── */}
-          <Stack.Screen name="Search" component={SearchScreen} />
-
-          <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ headerShown: false }} />
-
-          <Stack.Screen name="CreatePost" component={CreatePostScreen} />
-
-          <Stack.Screen
-            name="Notification"
-            component={NotificationScreen}
-            options={{
-              headerShown: true,
-              ...makeHeader({ title: 'Thông báo', showBack: true }),
-            }}
-          />
-
-          <Stack.Screen
-            name="PostDetail"
-            component={PostDetailScreen}
-            options={{
-              headerShown: true,
-              ...makeHeader({
-                title: 'Bài đăng',
-                showBack: true,
-                rightElement: (
-                  <TouchableOpacity>
-                    <Text style={{ fontSize: 16, color: '#555' }}>•••</Text>
-                  </TouchableOpacity>
-                ),
-              }),
-            }}
-          />
-
-          <Stack.Screen name="EditPost" component={EditPostScreen} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
-          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-          <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
-          <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
-          <Stack.Screen name="AdminContent" component={AdminContentScreen} />
-        </>
+        user?.isAdmin ? (
+          // ── Admin-only Stack ──
+          <>
+            <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+            <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
+            <Stack.Screen name="AdminContent" component={AdminContentScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+          </>
+        ) : (
+          // ── Regular User Stack ──
+          <>
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="Search" component={SearchScreen} />
+            <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="CreatePost" component={CreatePostScreen} />
+            <Stack.Screen
+              name="Notification"
+              component={NotificationScreen}
+              options={{
+                headerShown: true,
+                ...makeHeader({ title: 'Thông báo', showBack: true }),
+              }}
+            />
+            <Stack.Screen
+              name="PostDetail"
+              component={PostDetailScreen}
+              options={{
+                headerShown: true,
+                ...makeHeader({
+                  title: 'Bài đăng',
+                  showBack: true,
+                  rightElement: (
+                    <TouchableOpacity>
+                      <Text style={{ fontSize: 16, color: '#555' }}></Text>
+                    </TouchableOpacity>
+                  ),
+                }),
+              }}
+            />
+            <Stack.Screen name="EditPost" component={EditPostScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+          </>
+        )
       ) : (
         <>
           <Stack.Screen name="Login" component={LoginScreen} />

@@ -99,7 +99,6 @@ export default function AdminUsersScreen() {
     setUsers(normalizeUsers(payload));
   };
 
-  console.log(users)
 
   useEffect(() => {
     let mounted = true;

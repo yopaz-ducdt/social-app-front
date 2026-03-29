@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import BottomTab from '@/components/BottomTab';
 import { userService } from '@/services/userService';
 import { useAuth } from '@/context/AuthContext';
@@ -45,29 +45,31 @@ export default function ProfileScreen() {
 
   const data = activeTab === 'grid' ? myPosts : [];
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        setLoading(true);
-        const p = await userService.getProfile();
-        const postsPayload = await userService.getUserPosts(0, 30);
-        const items = postsPayload?.content ?? postsPayload ?? [];
-        if (!mounted) return;
-        setProfile(p);
-        setMyPosts(Array.isArray(items) ? items : []);
-      } catch {
-        if (!mounted) return;
-        setProfile(null);
-        setMyPosts([]);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+      (async () => {
+        try {
+          setLoading(true);
+          const p = await userService.getProfile();
+          const postsPayload = await userService.getUserPosts(0, 30);
+          const items = postsPayload?.content ?? postsPayload ?? [];
+          if (!mounted) return;
+          setProfile(p);
+          setMyPosts(Array.isArray(items) ? items : []);
+        } catch {
+          if (!mounted) return;
+          setProfile(null);
+          setMyPosts([]);
+        } finally {
+          if (mounted) setLoading(false);
+        }
+      })();
+      return () => {
+        mounted = false;
+      };
+    }, [])
+  );
 
   const viewModel = useMemo(() => {
     const username = user?.username ?? '';

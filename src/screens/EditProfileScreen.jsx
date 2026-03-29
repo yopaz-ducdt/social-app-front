@@ -35,16 +35,21 @@ export default function EditProfileScreen() {
     (async () => {
       try {
         setLoading(true);
-        const p = await userService.getProfile();
+        const res = await userService.getProfile();
+
         if (!mounted) return;
+
+        const p = res?.data ?? res?.result ?? res;
+
         setFirstName(p?.firstName ?? '');
         setLastName(p?.lastName ?? '');
         setGender(p?.gender ?? 'male');
-        // Load existing avatar if available
-        if (p?.image?.url) {
-          setAvatarUri(p.image.url);
+
+        const avatar = p?.image?.url ?? p?.avatarUrl ?? p?.imageUrl ?? p?.avatar ?? null;
+        if (avatar) {
+          setAvatarUri(avatar);
         }
-      } catch {
+      } catch (error) {
         // ignore
       } finally {
         if (mounted) setLoading(false);
@@ -125,6 +130,11 @@ export default function EditProfileScreen() {
   };
 
   const handleSave = async () => {
+    if (!firstName.trim() || !lastName.trim()) {
+      Alert.alert('Thông báo', 'Họ và Tên không được để trống.');
+      return;
+    }
+
     try {
       setSaving(true);
 
@@ -157,7 +167,7 @@ export default function EditProfileScreen() {
             <Text className="text-sm text-gray-600">Quay lại</Text>
           </TouchableOpacity>
           <Text className="flex-1 text-center text-base font-bold text-gray-900">Hồ sơ</Text>
-          <TouchableOpacity onPress={handleSave} className="w-16 items-end">
+          <TouchableOpacity onPress={handleSave} className="w-16 items-end" disabled={saving}>
             {saving ? (
               <ActivityIndicator />
             ) : (
