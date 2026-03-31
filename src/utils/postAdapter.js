@@ -5,9 +5,35 @@ export function adaptPost(raw) {
   const images = raw?.images ?? [];
   const likes = Number(raw?.like ?? 0) || 0;
   const comments = raw?.commentResponseList ?? [];
-  const username = raw?.username ?? raw?.user?.username ?? '';
+  const userResponse = raw?.userResponse ?? raw?.user ?? raw?.author ?? null;
+  const fullName = [userResponse?.firstName, userResponse?.lastName].filter(Boolean).join(' ').trim();
+  const username =
+    fullName ||
+    raw?.username ||
+    userResponse?.username ||
+    raw?.user?.username ||
+    '';
+  const author = {
+    id: userResponse?.id ?? raw?.authorId ?? raw?.userId ?? null,
+    firstName: userResponse?.firstName ?? '',
+    lastName: userResponse?.lastName ?? '',
+    username: userResponse?.username ?? raw?.username ?? '',
+    image: userResponse?.image ?? null,
+    avatarUrl: userResponse?.image?.url ?? null,
+  };
 
-  return { id, title, content, images, likes, comments, username, raw };
+  return {
+    id,
+    title,
+    content,
+    images,
+    likes,
+    comments,
+    username,
+    author,
+    image: author.image,
+    raw,
+  };
 }
 
 export function adaptPostList(payload) {

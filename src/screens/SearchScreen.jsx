@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,13 +15,17 @@ import { useAuth } from '@/context/AuthContext';
 
 const UserItem = ({ user, onPress }) => (
   <TouchableOpacity
-    className="flex-row items-center px-4 py-3 border-b border-gray-100"
+    className="flex-row items-center border-b border-gray-100 px-4 py-3"
     activeOpacity={0.7}
     onPress={() => onPress(user)}>
     {/* Avatar */}
-    <View className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-gray-100 border border-gray-200 overflow-hidden">
+    <View className="mr-3 h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100">
       {user.image?.url ? (
-        <Image source={{ uri: user.image.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        <Image
+          source={{ uri: user.image.url }}
+          style={{ width: '100%', height: '100%' }}
+          resizeMode="cover"
+        />
       ) : (
         <Text style={{ fontSize: 20 }}>👤</Text>
       )}
@@ -36,7 +40,7 @@ const UserItem = ({ user, onPress }) => (
     </View>
 
     {/* View Profile Icon */}
-    <Text className="text-gray-300 text-lg">›</Text>
+    <Text className="text-lg text-gray-300">›</Text>
   </TouchableOpacity>
 );
 
@@ -98,10 +102,11 @@ export default function SearchScreen() {
           <Text style={{ fontSize: 26, lineHeight: 28, color: '#111' }}>‹</Text>
         </TouchableOpacity>
 
-        <View className="flex-1 flex-row items-center ml-1 bg-gray-50 border border-gray-200 rounded-xl px-3 h-10">
+        <View className="ml-1 h-10 flex-1 flex-row items-center rounded-xl border border-gray-200 bg-gray-50 px-3">
           <Text className="mr-2 opacity-50">🔍</Text>
           <TextInput
-            className="flex-1 h-full text-sm text-gray-900"
+            className="flex-1 py-0 text-sm text-gray-900"
+            style={{ textAlignVertical: 'center', includeFontPadding: false }}
             placeholder="Tìm kiếm người dùng..."
             placeholderTextColor="#9ca3af"
             value={search}
@@ -111,7 +116,7 @@ export default function SearchScreen() {
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')} className="p-1">
-              <View className="h-4 w-4 bg-gray-300 rounded-full items-center justify-center">
+              <View className="h-4 w-4 items-center justify-center rounded-full bg-gray-300">
                 <Text style={{ fontSize: 10, color: 'white', fontWeight: 'bold' }}>✕</Text>
               </View>
             </TouchableOpacity>
@@ -137,13 +142,15 @@ export default function SearchScreen() {
         ListEmptyComponent={
           !loading && debouncedSearch ? (
             <View className="items-center py-16">
-              <Text className="text-gray-400 text-sm">Không tìm thấy "{debouncedSearch}"</Text>
+              <Text className="text-sm text-gray-400">
+                Không tìm thấy &quot;{debouncedSearch}&quot;
+              </Text>
             </View>
           ) : !debouncedSearch ? (
-            <View className="items-center py-16 px-6">
+            <View className="items-center px-6 py-16">
               <Text style={{ fontSize: 48, marginBottom: 12 }}>🔍</Text>
-              <Text className="text-gray-800 text-base font-semibold mb-2">Tìm kiếm mọi người</Text>
-              <Text className="text-gray-400 text-sm text-center">
+              <Text className="mb-2 text-base font-semibold text-gray-800">Tìm kiếm mọi người</Text>
+              <Text className="text-center text-sm text-gray-400">
                 Nhập tên hoặc email để tìm kiếm người dùng khác trên nền tảng.
               </Text>
             </View>

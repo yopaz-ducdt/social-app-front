@@ -7,11 +7,11 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomTab from '@/components/BottomTab';
 import PostCard from '@/components/PostCard';
+import LogoApp from '@/components/LogoApp';
 import { userService } from '@/services/userService';
 import { adaptPostList } from '@/utils/postAdapter';
 
@@ -25,7 +25,7 @@ export default function HomeScreen() {
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(true);   // lần đầu
+  const [loading, setLoading] = useState(true); // lần đầu
   const [loadingMore, setLoadingMore] = useState(false); // load thêm
   const [refreshing, setRefreshing] = useState(false);
 
@@ -45,8 +45,8 @@ export default function HomeScreen() {
       setPosts(newPosts);
       setPage(0);
       setHasMore(!isLast);
-    } catch (err) {
-      // Alert.alert('Lỗi tải bảng tin', err.message);
+    } catch (_err) {
+      // Alert.alert('Lỗi tải bảng tin', _err.message);
       setPosts([]);
     }
   }, [fetchPage]);
@@ -62,8 +62,8 @@ export default function HomeScreen() {
       setPosts((prev) => [...prev, ...newPosts]);
       setPage(nextPage);
       setHasMore(!isLast);
-    } catch (err) {
-      // Alert.alert('Lỗi tải thêm', err.message);
+    } catch (_err) {
+      // Alert.alert('Lỗi tải thêm', _err.message);
     } finally {
       setLoadingMore(false);
       isFetchingRef.current = false;
@@ -77,7 +77,7 @@ export default function HomeScreen() {
       await loadInitial();
       setLoading(false);
     })();
-  }, []);
+  }, [loadInitial]);
 
   // ── Render ───────────────────────────────────────────────
   const renderFooter = () => {
@@ -102,14 +102,18 @@ export default function HomeScreen() {
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
       <View className="flex-row items-center border-b border-gray-100 px-4 py-3">
-        <View className="mr-2 h-8 w-8 items-center justify-center rounded-lg bg-gray-900">
-          <Text className="text-xs font-bold text-white">S</Text>
-        </View>
+        <LogoApp size={32} className="mr-3" />
         <Text className="flex-1 text-base font-bold text-gray-900">Social App</Text>
-        <TouchableOpacity className="mr-3 p-1" onPress={() => navigation.navigate('Search')} activeOpacity={0.7}>
+        <TouchableOpacity
+          className="mr-3 p-1"
+          onPress={() => navigation.navigate('Search')}
+          activeOpacity={0.7}>
           <Text style={{ fontSize: 22 }}>🔍</Text>
         </TouchableOpacity>
-        <TouchableOpacity className="p-1" onPress={() => navigation.navigate('Notification')} activeOpacity={0.7}>
+        <TouchableOpacity
+          className="p-1"
+          onPress={() => navigation.navigate('Notification')}
+          activeOpacity={0.7}>
           <IconBell />
         </TouchableOpacity>
       </View>
@@ -123,7 +127,14 @@ export default function HomeScreen() {
         <FlatList
           data={posts}
           keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <PostCard post={item} />}
+          renderItem={({ item }) => (
+            <PostCard
+              post={item}
+              onDeleted={(deletedId) =>
+                setPosts((prev) => prev.filter((postItem) => String(postItem.id) !== String(deletedId)))
+              }
+            />
+          )}
           ListEmptyComponent={renderEmpty}
           ListFooterComponent={renderFooter}
           onEndReached={loadMore}

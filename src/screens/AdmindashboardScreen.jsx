@@ -28,6 +28,7 @@ export default function AdminDashboardScreen() {
   const isFocused = useIsFocused();
 
   const [totalUsers, setTotalUsers] = useState(0);
+  const [totalWarningPosts, setTotalWarningPosts] = useState(0);
   const [totalReports, setTotalReports] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -38,13 +39,24 @@ export default function AdminDashboardScreen() {
     (async () => {
       try {
         setLoading(true);
-        const [usersPayload, reportsPayload] = await Promise.all([
+        const [usersPayload, warningPostsPayload, reportsPayload] = await Promise.all([
           adminService.getUsers('', 0, 1),
+          adminService.getWarningPosts(0, 1),
           adminService.getAllReports(0, 1),
         ]);
         if (!mounted) return;
-        setTotalUsers(usersPayload?.totalElements ?? usersPayload?.content?.length ?? usersPayload?.length ?? 0);
-        setTotalReports(reportsPayload?.totalElements ?? reportsPayload?.content?.length ?? reportsPayload?.length ?? 0);
+        setTotalUsers(
+          usersPayload?.totalElements ?? usersPayload?.content?.length ?? usersPayload?.length ?? 0
+        );
+        setTotalWarningPosts(
+          warningPostsPayload?.totalElements ??
+            warningPostsPayload?.content?.length ??
+            warningPostsPayload?.length ??
+            0
+        );
+        setTotalReports(
+          reportsPayload?.totalElements ?? reportsPayload?.content?.length ?? reportsPayload?.length ?? 0
+        );
       } catch {
         // ignore
       } finally {
@@ -59,6 +71,12 @@ export default function AdminDashboardScreen() {
 
   const STATS = [
     { id: 'users', icon: '👥', value: loading ? '...' : totalUsers.toLocaleString(), label: 'Tổng users' },
+    {
+      id: 'warning-posts',
+      icon: '🚫',
+      value: loading ? '...' : totalWarningPosts.toLocaleString(),
+      label: 'Bài bị cảnh báo',
+    },
     { id: 'reports', icon: 'ℹ️', value: loading ? '...' : totalReports.toLocaleString(), label: 'Phiếu tố cáo' },
   ];
 

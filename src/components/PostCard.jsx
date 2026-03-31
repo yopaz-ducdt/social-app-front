@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, Dimensions, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Dimensions, Image, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import PostOptionsModal from '@/components/PostOptionsModal';
 import { userService } from '@/services/userService';
@@ -8,13 +8,11 @@ import { useAuth } from '@/context/AuthContext';
 const { width } = Dimensions.get('window');
 
 const IconHeart = ({ filled }) => <Text style={{ fontSize: 22 }}>{filled ? '❤️' : '🤍'}</Text>;
-const IconComment = () => <Text style={{ fontSize: 22 }}>💬</Text>;
-const IconShare = () => <Text style={{ fontSize: 22 }}>➤</Text>;
 const IconMore = () => <Text style={{ fontWeight: '500', color: '#555' }}>•••</Text>;
 
 const Avatar = ({ size = 9, uri = null }) => (
   <View
-    className={`items-center justify-center rounded-full bg-gray-200 overflow-hidden`}
+    className={`items-center justify-center overflow-hidden rounded-full bg-gray-200`}
     style={{ width: size * 4, height: size * 4 }}>
     {uri ? (
       <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
@@ -24,18 +22,28 @@ const Avatar = ({ size = 9, uri = null }) => (
   </View>
 );
 
-export default function PostCard({ post }) {
+export default function PostCard({ post, onDeleted }) {
   const navigation = useNavigation();
   const { user: currentUser } = useAuth();
   const [liked, setLiked] = useState(post.liked);
   const [likes, setLikes] = useState(post.likes);
   const [showOptions, setShowOptions] = useState(false);
+  const author = post?.author ?? {};
+  const displayName =
+    post?.username ||
+    [author.firstName, author.lastName].filter(Boolean).join(' ').trim() ||
+    author.username ||
+    'unknown';
+  const authorId = String(author.id ?? post?.raw?.userResponse?.id ?? post?.raw?.userId ?? '');
+  const imageUrls = (Array.isArray(post?.images) ? post.images : []).map((item) => item?.url).filter(Boolean);
+  const feedImages = imageUrls.length > 0 ? imageUrls : post?.image?.url ? [post.image.url] : [];
+  const visibleImages = feedImages.slice(0, 3);
+  const remainingImages = feedImages.length - visibleImages.length;
 
-  // Check if current user is the author
-  // BE structure mapping: post.username, post.author.id, etc.
   const isMyPost = Boolean(
     currentUser?.username === post.username ||
-    (post.author?.id && (currentUser?.id === post.author.id || currentUser?.userId === post.author.id))
+    currentUser?.username === author.username ||
+    (authorId && String(currentUser?.id ?? currentUser?.userId ?? '') === authorId)
   );
 
   const toggleLike = async () => {
@@ -50,58 +58,79 @@ export default function PostCard({ post }) {
     }
   };
 
+  const openProfile = () => {
+    if (!authorId) return;
+    navigation.navigate('UserProfile', { userId: authorId });
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await userService.deletePost(id);
+      setShowOptions(false);
+      onDeleted?.(id);
+      Alert.alert('Thành công', 'Đã xóa bài viết.');
+    } catch (e) {
+      console.warn('Xoá bài thất bại:', e.message);
+    }
+  };
+
+  const handleReport = async (content) => {
+    await userService.createReport(post.id, 'Báo cáo bài viết', content.trim());
+  };
+
   return (
     <View className="mb-6">
-      {/* Header — nhấn để vào PostDetail */}
-      <TouchableOpacity
-        className="mb-3 flex-row items-center px-4"
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('PostDetail', { post })}>
-        <Avatar size={9} uri={post?.author?.image?.url ?? post?.image?.url} />
-        <View className="ml-3 flex-1">
-          <Text className="text-sm font-semibold text-gray-900">{post.username}</Text>
-          <Text className="text-xs text-gray-400">@{post.username}</Text>
-        </View>
-        {isMyPost && (
-          <TouchableOpacity className="px-1" onPress={() => setShowOptions(true)}>
-            <IconMore />
-          </TouchableOpacity>
-        )}
-      </TouchableOpacity>
-
-      {/* Post Image */}
-      <View
-        style={{ width, height: width }}
-        className="items-center justify-center border-b border-t border-gray-100 bg-gray-50 overflow-hidden">
-        {post?.images?.[0]?.url ? (
-          <Image
-            source={{ uri: post.images[0].url }}
-            style={{ width: '100%', height: '100%' }}
-            resizeMode="cover"
+      {/* Header */}
+      <View className="mb-3 flex-row items-center px-4">
+        <TouchableOpacity
+          className="flex-1 flex-row items-center"
+          activeOpacity={0.8}
+          onPress={openProfile}>
+          <Avatar
+            size={9}
+            uri={author.image?.url ?? author.avatarUrl ?? post?.image?.url ?? null}
           />
-        ) : post?.image?.url ? (
-          <Image
-            source={{ uri: post.image.url }}
-            style={{ width: '100%', height: '100%' }}
-            resizeMode="cover"
-          />
-        ) : (
-          <View className="h-16 w-16 items-center justify-center rounded-xl border border-gray-300">
-            <Text className="text-3xl text-gray-300">🖼️</Text>
+          <View className="ml-3 flex-1">
+            <Text className="text-sm font-semibold text-gray-900">{displayName}</Text>
           </View>
-        )}
+        </TouchableOpacity>
+        <TouchableOpacity className="px-1" onPress={() => setShowOptions(true)}>
+          <IconMore />
+        </TouchableOpacity>
       </View>
+
+      {visibleImages.length > 0 && (
+        <TouchableOpacity
+          style={{ width, height: width }}
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate('PostDetail', { post })}
+          className="items-center justify-center overflow-hidden border-b border-t border-gray-100 bg-gray-50">
+          <View className="h-full w-full flex-row">
+            {visibleImages.map((uri, index) => (
+              <View
+                key={`${post.id}-${uri}-${index}`}
+                className={index < visibleImages.length - 1 ? 'border-r border-white' : ''}
+                style={{ width: `${100 / visibleImages.length}%`, height: '100%' }}>
+                <Image
+                  source={{ uri }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
+                {index === 2 && remainingImages > 0 && (
+                  <View className="absolute inset-0 items-center justify-center bg-black/45">
+                    <Text className="text-3xl font-bold text-white">+</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Actions */}
       <View className="flex-row items-center px-4 pb-1 pt-3">
         <TouchableOpacity onPress={toggleLike} className="mr-4" activeOpacity={0.8}>
           <IconHeart filled={liked} />
-        </TouchableOpacity>
-        <TouchableOpacity className="mr-4" activeOpacity={0.8}>
-          <IconComment />
-        </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.8}>
-          <IconShare />
         </TouchableOpacity>
         <View className="flex-1" />
       </View>
@@ -113,10 +142,13 @@ export default function PostCard({ post }) {
 
       {/* Caption */}
       <View className="px-4">
-        <Text className="text-sm text-gray-900">
-          <Text className="font-semibold">{post.username || post.title} </Text>
-          {post.content}
-        </Text>
+        {post?.title ? <Text className="mb-1 text-sm font-semibold text-gray-900">{post.title}</Text> : null}
+        {post?.content ? (
+          <Text className="text-sm text-gray-900">
+            <Text className="font-semibold">{displayName} </Text>
+            {post.content}
+          </Text>
+        ) : null}
       </View>
 
       {/* Time */}
@@ -125,13 +157,9 @@ export default function PostCard({ post }) {
         visible={showOptions}
         onClose={() => setShowOptions(false)}
         post={post}
-        onDelete={async (id) => {
-          try {
-            await userService.deletePost(id);
-          } catch (e) {
-            console.warn('Xoá bài thất bại:', e.message);
-          }
-        }}
+        isMyPost={isMyPost}
+        onDelete={handleDelete}
+        onReport={handleReport}
       />
     </View>
   );

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { authService } from '@/services/authService';
+import LogoApp from '@/components/LogoApp';
 
 const GoogleIcon = () => <View className="mr-2 h-5 w-5 rounded-full bg-gray-300" />;
 
@@ -26,6 +27,11 @@ const GENDER_OPTIONS = [
 
 export default function SignupScreen() {
   const navigation = useNavigation();
+  const lastNameRef = useRef(null);
+  const usernameRef = useRef(null);
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+  const confirmPasswordRef = useRef(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -93,29 +99,7 @@ export default function SignupScreen() {
             <View className="w-6" />
           </View>
 
-          <View className="mb-4 items-center">
-            <View className="h-16 w-16 items-center justify-center rounded-xl border border-gray-300">
-              <Text className="text-2xl">✳️</Text>
-            </View>
-          </View>
-
-          <Text className="pb-2 text-center text-xl font-bold text-gray-900">Chào mừng bạn</Text>
-          <Text className="mb-5 text-center text-sm text-gray-400">
-            Bắt đầu hành trình từ hôm nay
-          </Text>
-
-          <TouchableOpacity
-            className="mb-5 flex-row items-center justify-center rounded-lg border border-gray-200 py-3.5"
-            disabled={loading}>
-            <GoogleIcon />
-            <Text className="text-base font-medium text-gray-700">Tiếp tục với Google</Text>
-          </TouchableOpacity>
-
-          <View className="mb-5 flex-row items-center">
-            <View className="h-px flex-1 bg-gray-200" />
-            <Text className="mx-4 text-xs uppercase tracking-widest text-gray-400">Hoặc</Text>
-            <View className="h-px flex-1 bg-gray-200" />
-          </View>
+          <LogoApp size={60} className="self-center mb-8" />
 
           <View className="mb-4 flex-row gap-3">
             <View className="flex-1">
@@ -129,6 +113,9 @@ export default function SignupScreen() {
                 value={firstName}
                 onChangeText={setFirstName}
                 editable={!loading}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => lastNameRef.current?.focus()}
               />
             </View>
             <View className="flex-1">
@@ -136,12 +123,16 @@ export default function SignupScreen() {
                 Tên
               </Text>
               <TextInput
+                ref={lastNameRef}
                 className="rounded-lg border border-gray-300 px-4 py-3 text-base text-gray-900"
                 placeholder="Văn A"
                 placeholderTextColor="#9ca3af"
                 value={lastName}
                 onChangeText={setLastName}
                 editable={!loading}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => usernameRef.current?.focus()}
               />
             </View>
           </View>
@@ -151,6 +142,7 @@ export default function SignupScreen() {
               Tên Đăng Nhập
             </Text>
             <TextInput
+              ref={usernameRef}
               className="rounded-lg border border-gray-300 px-4 py-3 text-base text-gray-900"
               placeholder="Username"
               placeholderTextColor="#9ca3af"
@@ -158,6 +150,9 @@ export default function SignupScreen() {
               onChangeText={setUsername}
               autoCapitalize="none"
               editable={!loading}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => emailRef.current?.focus()}
             />
           </View>
 
@@ -187,6 +182,7 @@ export default function SignupScreen() {
               Địa Chỉ Email
             </Text>
             <TextInput
+              ref={emailRef}
               className="rounded-lg border border-gray-300 px-4 py-3 text-base text-gray-900"
               placeholder="name@gmail.com"
               placeholderTextColor="#9ca3af"
@@ -195,6 +191,9 @@ export default function SignupScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               editable={!loading}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => passwordRef.current?.focus()}
             />
           </View>
 
@@ -204,6 +203,7 @@ export default function SignupScreen() {
             </Text>
             <View className="flex-row items-center rounded-lg border border-gray-300 px-4">
               <TextInput
+                ref={passwordRef}
                 className="flex-1 py-3 text-base text-gray-900"
                 placeholder="••••••••"
                 placeholderTextColor="#9ca3af"
@@ -211,6 +211,9 @@ export default function SignupScreen() {
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 editable={!loading}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => confirmPasswordRef.current?.focus()}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)} className="p-1">
                 <EyeIcon visible={showPassword} />
@@ -224,6 +227,7 @@ export default function SignupScreen() {
             </Text>
             <View className="flex-row items-center rounded-lg border border-gray-300 px-4">
               <TextInput
+                ref={confirmPasswordRef}
                 className="flex-1 py-3 text-base text-gray-900"
                 placeholder="••••••••"
                 placeholderTextColor="#9ca3af"
@@ -231,6 +235,8 @@ export default function SignupScreen() {
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showConfirm}
                 editable={!loading}
+                returnKeyType="done"
+                onSubmitEditing={handleRegister}
               />
               <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)} className="p-1">
                 <EyeIcon visible={showConfirm} />

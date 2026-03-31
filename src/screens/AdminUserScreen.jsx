@@ -7,6 +7,7 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -26,16 +27,19 @@ const UserItem = ({ user, onToggle, isToggling }) => {
     <View className="flex-row items-center border-b border-gray-100 px-4 py-3">
       {/* Avatar */}
       <View
-        className={`mr-3 h-11 w-11 items-center justify-center rounded-full ${isBlocked ? 'bg-gray-200' : 'bg-gray-100'}`}>
-        <Text style={{ fontSize: 20, opacity: isBlocked ? 0.4 : 1 }}>👤</Text>
+        className={`mr-3 h-11 w-11 items-center justify-center overflow-hidden rounded-full ${isBlocked ? 'bg-gray-200' : 'bg-gray-100'}`}>
+        {user.avatarUrl ? (
+          <Image source={{ uri: user.avatarUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        ) : (
+          <Text style={{ fontSize: 20, opacity: isBlocked ? 0.4 : 1 }}>👤</Text>
+        )}
       </View>
 
       {/* Info */}
       <View className="flex-1">
         <Text className={`text-sm font-semibold ${isBlocked ? 'text-gray-400' : 'text-gray-900'}`}>
-          {user.username}
+          {user.fullName}
         </Text>
-        <Text className="mb-1 text-xs text-gray-400">{user.email}</Text>
         <View className="flex-row items-center">
           <View
             className={`mr-1 h-1.5 w-1.5 rounded-full ${isBlocked ? 'bg-gray-400' : 'bg-gray-900'}`}
@@ -77,19 +81,11 @@ export default function AdminUsersScreen() {
     if (!Array.isArray(items)) return [];
     return items.map((u) => ({
       id: String(u?.id ?? ''),
-      username: [u?.firstName, u?.lastName].filter(Boolean).join(' ') || 'unknown',
-      email: u?.email ?? '',
+      fullName: [u?.firstName, u?.lastName].filter(Boolean).join(' ') || 'unknown',
+      avatarUrl: u?.image?.url ?? null,
       gender: u?.gender ?? '',
-      status:
-        u?.enabled === false ||
-          u?.enabled === 'false' ||
-          u?.accountNonLocked === false ||
-          u?.locked === true ||
-          u?.isLocked === true ||
-          u?.isActive === false ||
-          u?.status === 'blocked'
-          ? 'blocked'
-          : 'active',
+      enabled: Boolean(u?.enabled),
+      status: u?.enabled === false ? 'blocked' : 'active',
       raw: u,
     }));
   };
@@ -125,7 +121,12 @@ export default function AdminUsersScreen() {
     setUsers((prev) =>
       prev.map((u) => {
         if (u.id === id) {
-          return { ...u, status: u.status === 'blocked' ? 'active' : 'blocked' };
+          const nextBlocked = u.status !== 'blocked';
+          return {
+            ...u,
+            enabled: !nextBlocked,
+            status: nextBlocked ? 'blocked' : 'active',
+          };
         }
         return u;
       })
@@ -138,7 +139,12 @@ export default function AdminUsersScreen() {
       setUsers((prev) =>
         prev.map((u) => {
           if (u.id === id) {
-            return { ...u, status: u.status === 'blocked' ? 'active' : 'blocked' };
+            const nextBlocked = u.status !== 'blocked';
+            return {
+              ...u,
+              enabled: !nextBlocked,
+              status: nextBlocked ? 'blocked' : 'active',
+            };
           }
           return u;
         })
@@ -152,8 +158,8 @@ export default function AdminUsersScreen() {
   const filtered = useMemo(() => {
     return users.filter((u) => {
       const matchSearch =
-        u.username.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase());
+        u.fullName.toLowerCase().includes(search.toLowerCase()) ||
+        u.id.toLowerCase().includes(search.toLowerCase());
       const matchTab =
         activeTab === 'all' ||
         (activeTab === 'active' && u.status === 'active') ||
@@ -181,7 +187,7 @@ export default function AdminUsersScreen() {
           <Text className="mr-2 text-gray-400">🔍</Text>
           <TextInput
             className="flex-1 text-sm text-gray-900"
-            placeholder="Tìm bằng tên hoặc email ..."
+            placeholder="Tìm bằng tên hoặc ID ..."
             placeholderTextColor="#9ca3af"
             value={search}
             onChangeText={setSearch}

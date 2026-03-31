@@ -5,11 +5,12 @@ import SignupScreen from '@/screens/SignupScreen';
 import PostDetailScreen from '@/screens/PostDetailScreen';
 import AppHeader from '@/components/AppHeader';
 import { TouchableOpacity, Text, View, ActivityIndicator } from 'react-native';
-import NotificationScreen from '@/screens/Notificationscreen';
+import NotificationScreen from '@/screens/NotificationScreen';
 import ForgotPasswordScreen from '@/screens/ForgotPasswordScreen';
 import SettingsScreen from '@/screens/SettingsScreen';
 import ProfileScreen from '@/screens/ProfileScreen';
 import EditProfileScreen from '@/screens/EditProfileScreen';
+import ChangePasswordScreen from '@/screens/ChangePasswordScreen';
 import CreatePostScreen from '@/screens/CreatePostScreen';
 import AdminDashboardScreen from '@/screens/AdmindashboardScreen';
 import EditPostScreen from '@/screens/EditPostScreen';
@@ -57,6 +58,7 @@ export default function AppNavigator() {
             <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
             <Stack.Screen name="AdminContent" component={AdminContentScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
           </>
         ) : (
           // ── Regular User Stack ──
@@ -93,6 +95,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
           </>
         )
       ) : (

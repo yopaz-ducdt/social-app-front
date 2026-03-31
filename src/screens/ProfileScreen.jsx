@@ -24,10 +24,13 @@ const GridItem = ({ item, onPress }) => (
     style={{ width: ITEM_SIZE, height: ITEM_SIZE }}
     className="items-center justify-center border border-white bg-gray-100"
     onPress={() => onPress(item)}
-    activeOpacity={0.8}
-  >
+    activeOpacity={0.8}>
     {item?.images?.[0]?.url ? (
-      <Image source={{ uri: item.images[0].url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+      <Image
+        source={{ uri: item.images[0].url }}
+        style={{ width: '100%', height: '100%' }}
+        resizeMode="cover"
+      />
     ) : (
       <Text style={{ fontSize: 24, color: '#d1d5db' }}>🖼️</Text>
     )}
@@ -37,13 +40,10 @@ const GridItem = ({ item, onPress }) => (
 // ─── Main Screen ──────────────────────────────────────────────
 export default function ProfileScreen() {
   const navigation = useNavigation();
-  const [activeTab, setActiveTab] = useState('grid')
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [myPosts, setMyPosts] = useState([]);
-
-  const data = activeTab === 'grid' ? myPosts : [];
 
   useFocusEffect(
     useCallback(() => {
@@ -73,8 +73,7 @@ export default function ProfileScreen() {
 
   const viewModel = useMemo(() => {
     const username = user?.username ?? '';
-    const fullName =
-      [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || username;
+    const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || username;
     const description = profile?.description ?? profile?.bio ?? '';
     const avatarUrl = profile?.image?.url ?? null;
     return {
@@ -82,9 +81,6 @@ export default function ProfileScreen() {
       fullName,
       description,
       avatarUrl,
-      posts: Array.isArray(myPosts) ? myPosts.length : 0,
-      followerCount: profile?.followerCount ?? 0,
-      followingCount: profile?.followingCount ?? 0,
     };
   }, [profile, user, myPosts]);
   return (
@@ -112,9 +108,13 @@ export default function ProfileScreen() {
         <View className="px-4 pb-2 pt-4">
           {/* Avatar + Name */}
           <View className="mb-4 flex-row items-center">
-            <View className="mr-4 h-16 w-16 items-center justify-center rounded-full border border-dashed border-gray-400 overflow-hidden bg-gray-50">
+            <View className="mr-4 h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-dashed border-gray-400 bg-gray-50">
               {viewModel.avatarUrl ? (
-                <Image source={{ uri: viewModel.avatarUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                <Image
+                  source={{ uri: viewModel.avatarUrl }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
               ) : (
                 <Text style={{ fontSize: 28 }}>👤</Text>
               )}
@@ -128,7 +128,7 @@ export default function ProfileScreen() {
           {/* Action Buttons */}
           <View className="mb-5 flex-row gap-2">
             <TouchableOpacity
-              className="flex-1 items-center rounded-xl bg-black py-3 justify-center"
+              className="flex-1 items-center justify-center rounded-xl bg-black py-3"
               activeOpacity={0.85}
               onPress={() => navigation.navigate('EditProfile')}>
               <Text className="text-sm font-bold tracking-widest text-white">CHỈNH SỬA</Text>
@@ -143,48 +143,16 @@ export default function ProfileScreen() {
             )}
           </View>
 
-          {/* Stats */}
-          <View className="mb-4 flex-row overflow-hidden rounded-xl border border-gray-100">
-            {[
-              { value: viewModel.posts, label: 'BÀI ĐĂNG' },
-              { value: viewModel.followerCount, label: 'NGƯỜI THEO DÕI' },
-              { value: viewModel.followingCount, label: 'ĐANG THEO DÕI' },
-            ].map((stat, index) => (
-              <View
-                key={stat.label}
-                className={`flex-1 items-center py-3 ${index < 2 ? 'border-r border-gray-100' : ''}`}>
-                <Text className="text-base font-bold text-gray-900">{stat.value}</Text>
-                <Text className="mt-0.5 text-xs text-gray-400">{stat.label}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* ── Tabs ── */}
-        <View className="flex-row border-b border-gray-100">
-          <TouchableOpacity
-            className={`flex-1 items-center border-b-2 py-3 ${activeTab === 'grid' ? 'border-gray-900' : 'border-transparent'}`}
-            onPress={() => setActiveTab('grid')}>
-            <Text style={{ fontSize: 22 }}>⊞</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className={`flex-1 items-center border-b-2 py-3 ${activeTab === 'tagged' ? 'border-gray-900' : 'border-transparent'}`}
-            onPress={() => setActiveTab('tagged')}>
-            <Text style={{ fontSize: 22 }}>🖼️</Text>
-          </TouchableOpacity>
         </View>
 
         {/* ── Grid ── */}
         <FlatList
-          data={data}
+          data={myPosts}
           keyExtractor={(item, idx) => String(item?.id ?? idx)}
           numColumns={3}
           scrollEnabled={false}
           renderItem={({ item }) => (
-            <GridItem
-              item={item}
-              onPress={(post) => navigation.navigate('PostDetail', { post })}
-            />
+            <GridItem item={item} onPress={(post) => navigation.navigate('PostDetail', { post })} />
           )}
         />
       </ScrollView>

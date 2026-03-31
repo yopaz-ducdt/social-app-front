@@ -18,6 +18,10 @@ export const adminService = {
   getPosts: (title = '', page = 0, size = 10) =>
     api.get('/admin/posts', { params: { title, page, size } }),
 
+  // GET /admin/warning-posts?page=&size=
+  getWarningPosts: (page = 0, size = 10) =>
+    api.get('/admin/warning-posts', { params: { page, size } }),
+
   // GET /admin/posts/:id
   getPost: (id) => api.get(`/admin/posts/${id}`),
 

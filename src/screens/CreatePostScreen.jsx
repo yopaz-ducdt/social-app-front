@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -18,13 +17,6 @@ import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { userService } from '@/services/userService';
 import { useAuth } from '@/context/AuthContext';
-
-// ─── Extra options ────────────────────────────────────────────
-const OPTIONS = [
-  { id: 'tag', icon: '👥', label: 'Gắn thẻ người khác' },
-  { id: 'feeling', icon: '😊', label: 'Cảm xúc / Hoạt động' },
-  { id: 'location', icon: '📍', label: 'Thêm vị trí' },
-];
 
 export default function CreatePostScreen() {
   const navigation = useNavigation();
@@ -92,7 +84,7 @@ export default function CreatePostScreen() {
         (buttonIndex) => {
           if (buttonIndex === 1) openCamera();
           else if (buttonIndex === 2) openGallery();
-        },
+        }
       );
     } else {
       Alert.alert('Thêm ảnh', '', [
@@ -172,32 +164,28 @@ export default function CreatePostScreen() {
 
           {/* ── Image picker row ── */}
           <View className="mb-6 mt-4 px-4">
-            <FlatList
-              data={[...images, { id: 'add' }]}
-              keyExtractor={(item) => item.id}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8 }}
-              renderItem={({ item }) => {
+            <View className="flex-row flex-wrap">
+              {[...images, { id: 'add' }].map((item) => {
                 if (item.id === 'add') {
                   return (
                     <TouchableOpacity
+                      key={item.id}
                       onPress={handleAddImage}
                       activeOpacity={0.8}
-                      className="h-24 w-24 items-center justify-center rounded-xl border border-gray-200">
+                      className="mb-2 mr-2 h-24 w-24 items-center justify-center rounded-xl border border-gray-200">
                       <Text style={{ fontSize: 20 }}>🖼️</Text>
                       <Text className="mt-1 text-xs text-gray-400">Thêm</Text>
                     </TouchableOpacity>
                   );
                 }
+
                 return (
-                  <View className="relative">
+                  <View key={item.id} className="relative mb-2 mr-2">
                     <Image
                       source={{ uri: item.uri }}
                       className="h-24 w-24 rounded-xl border border-gray-200"
                       resizeMode="cover"
                     />
-                    {/* Remove button */}
                     <TouchableOpacity
                       onPress={() => handleRemoveImage(item.id)}
                       className="absolute -right-2 -top-2 h-6 w-6 items-center justify-center rounded-full bg-gray-800"
@@ -206,24 +194,9 @@ export default function CreatePostScreen() {
                     </TouchableOpacity>
                   </View>
                 );
-              }}
-            />
+              })}
+            </View>
           </View>
-
-          {/* ── Divider ── */}
-          <View className="mx-4 mb-2 h-px bg-gray-100" />
-
-          {/* ── Options ── */}
-          {OPTIONS.map((opt, index) => (
-            <TouchableOpacity
-              key={opt.id}
-              activeOpacity={0.7}
-              className={`flex-row items-center px-4 py-4 ${index < OPTIONS.length - 1 ? 'border-b border-gray-100' : ''}`}>
-              <Text style={{ fontSize: 20, width: 32 }}>{opt.icon}</Text>
-              <Text className="flex-1 text-sm text-gray-800">{opt.label}</Text>
-              <Text className="text-lg text-gray-400">›</Text>
-            </TouchableOpacity>
-          ))}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

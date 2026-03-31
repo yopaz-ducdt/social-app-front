@@ -14,29 +14,58 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { userService } from '@/services/userService';
 import { useAuth } from '@/context/AuthContext';
-import PostOptionsModal from '@/components/PostOptionsModal';
 
 const { width } = Dimensions.get('window');
 
-
 // Normalize response shape theo PostResponse schema API
 const adaptPostDetail = (raw) => {
+  const userResponse = raw?.userResponse ?? raw?.user ?? raw?.author ?? null;
+  const images =
+    Array.isArray(raw?.images) && raw.images.length > 0
+      ? raw.images.filter((item) => item?.url)
+      : [];
+  const fullName = [userResponse?.firstName, userResponse?.lastName]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+
   return {
     id: String(raw?.id ?? ''),
     title: raw?.title ?? '',
     content: raw?.content ?? '',
     likes: Number(raw?.like ?? 0) || 0,
-    images: raw?.images ?? [],
+    images,
     commentCount: raw?.commentResponseList?.length ?? 0,
     author: {
-      username: raw?.username ?? raw?.author?.username ?? '',
-      id: raw?.authorId ?? raw?.userId ?? null,
-      avatarUrl: raw?.author?.image?.url ?? raw?.image?.url ?? null,
+      name: fullName || raw?.username || userResponse?.username || '',
+      username: userResponse?.username ?? raw?.username ?? raw?.author?.username ?? '',
+      id: userResponse?.id ?? raw?.authorId ?? raw?.userId ?? null,
+      avatarUrl: userResponse?.image?.url ?? raw?.author?.image?.url ?? raw?.image?.url ?? null,
     },
     isFollowing: Boolean(raw?.isFollowing ?? false),
     liked: Boolean(raw?.liked ?? raw?.isLiked ?? false),
     comments: raw?.commentResponseList ?? [],
     raw,
+  };
+};
+
+const mergePostDetail = (basePost, detailPost) => {
+  if (!basePost) return detailPost;
+  if (!detailPost) return basePost;
+
+  return {
+    ...basePost,
+    ...detailPost,
+    userResponse: detailPost?.userResponse ?? basePost?.userResponse,
+    username: detailPost?.username ?? basePost?.username,
+    author: detailPost?.author ?? basePost?.author,
+    user: detailPost?.user ?? basePost?.user,
+    image: detailPost?.image ?? basePost?.image,
+    images:
+      Array.isArray(detailPost?.images) && detailPost.images.length > 0
+        ? detailPost.images
+        : basePost?.images,
+    commentResponseList: detailPost?.commentResponseList ?? basePost?.commentResponseList,
   };
 };
 
@@ -47,10 +76,9 @@ const adaptComments = (rawComments) => {
     username: c?.fullName ?? c?.username ?? 'unknown',
     userId: c?.userId ?? '',
     text: c?.content ?? '',
-    url: c?.url ?? '',
+    avatarUrl: c?.url ?? '',
     likes: 0,
     liked: false,
-    replies: [],
     raw: c,
   }));
 };
@@ -59,14 +87,11 @@ const adaptComments = (rawComments) => {
 const IconHeart = ({ filled, size = 22 }) => (
   <Text style={{ fontSize: size }}>{filled ? '❤️' : '🤍'}</Text>
 );
-const IconComment = () => <Text style={{ fontSize: 22 }}>💬</Text>;
-const IconShare = () => <Text style={{ fontSize: 22 }}>➤</Text>;
-const IconMore = () => <Text style={{ fontWeight: '500', color: '#555' }}>•••</Text>;
 
 // ─── Avatar placeholder ───────────────────────────────────────
 const Avatar = ({ size = 10, uri = null }) => (
   <View
-    className={`items-center justify-center rounded-full bg-gray-200 overflow-hidden`}
+    className={`items-center justify-center overflow-hidden rounded-full bg-gray-200`}
     style={{ width: size * 4, height: size * 4 }}>
     {uri ? (
       <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
@@ -77,47 +102,26 @@ const Avatar = ({ size = 10, uri = null }) => (
 );
 
 // ─── Comment Item ─────────────────────────────────────────────
-const CommentItem = ({ comment, isReply = false }) => {
-  const [liked, setLiked] = useState(comment.liked);
-  const [likes, setLikes] = useState(comment.likes);
-
-  const toggleLike = () => {
-    setLiked(!liked);
-    setLikes(liked ? likes - 1 : likes + 1);
-  };
-
+const CommentItem = ({ comment, isReply = false, onPressUser }) => {
   return (
     <View className={`mb-4 flex-row ${isReply ? 'ml-10 mt-3' : ''}`}>
       {/* Avatar */}
-      <View className="mr-3">
-        <Avatar size={isReply ? 8 : 9} />
-      </View>
+      <TouchableOpacity
+        className="mr-3"
+        activeOpacity={0.8}
+        onPress={() => onPressUser?.(comment.userId)}>
+        <Avatar size={isReply ? 8 : 9} uri={comment.avatarUrl} />
+      </TouchableOpacity>
 
       {/* Content */}
       <View className="flex-1">
         <View className="flex-row flex-wrap items-baseline">
-          <Text className="mr-1 text-sm font-semibold text-gray-900">{comment.username}</Text>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => onPressUser?.(comment.userId)}>
+            <Text className="mr-1 text-sm font-semibold text-gray-900">{comment.username}</Text>
+          </TouchableOpacity>
           <Text className="mr-2 text-xs text-gray-400">{comment.time}</Text>
         </View>
-
-        <Text className="mt-0.5 text-sm leading-5 text-gray-800">
-          {comment.mention && <Text className="font-medium text-blue-500">{comment.mention} </Text>}
-          {comment.text}
-        </Text>
-
-        {/* Actions */}
-        <View className="mt-2 flex-row items-center gap-4">
-          <TouchableOpacity>
-            <Text className="text-xs font-medium text-gray-400">Trả lời</Text>
-          </TouchableOpacity>
-        </View>
       </View>
-
-      {/* Like */}
-      <TouchableOpacity onPress={toggleLike} className="ml-2 items-center">
-        <IconHeart filled={liked} size={14} />
-        {likes > 0 && <Text className="mt-0.5 text-xs text-gray-400">{likes}</Text>}
-      </TouchableOpacity>
     </View>
   );
 };
@@ -136,8 +140,6 @@ export default function PostDetailScreen() {
   const [captionLiked, setCaptionLiked] = useState(false);
   const [likes, setLikes] = useState(0);
   const [comment, setComment] = useState('');
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
   const inputRef = useRef(null);
 
   const adapted = useMemo(() => (post ? adaptPostDetail(post) : null), [post]);
@@ -157,12 +159,12 @@ export default function PostDetailScreen() {
         setLoading(true);
         const raw = await userService.getPost(postId);
         if (!mounted) return;
-        const p = adaptPostDetail(raw);
-        setPost(raw);
+        const mergedPost = mergePostDetail(postParam, raw);
+        const p = adaptPostDetail(mergedPost);
+        setPost(mergedPost);
         setComments(adaptComments(p.comments));
         setCaptionLiked(p.liked);
         setLikes(p.likes);
-        setIsFollowing(p.isFollowing);
       } catch {
         // ignore
       } finally {
@@ -172,18 +174,18 @@ export default function PostDetailScreen() {
     return () => {
       mounted = false;
     };
-  }, [postId]);
+  }, [postId, postParam]);
 
   const refresh = async () => {
     if (!postId) return;
     try {
       const raw = await userService.getPost(postId);
-      const p = adaptPostDetail(raw);
-      setPost(raw);
+      const mergedPost = mergePostDetail(postParam, raw);
+      const p = adaptPostDetail(mergedPost);
+      setPost(mergedPost);
       setComments(adaptComments(p.comments));
       setCaptionLiked(p.liked);
       setLikes(p.likes);
-      setIsFollowing(p.isFollowing);
     } catch {
       // ignore
     }
@@ -221,39 +223,53 @@ export default function PostDetailScreen() {
     }
   };
 
-  const followId = adapted?.author?.id;
+  const openAuthorProfile = () => {
+    const authorId = String(adapted?.author?.id ?? '');
+    const myId = String(currentUser?.id ?? currentUser?.userId ?? '');
 
-  // Kiểm tra bằng id hoặc username để chắc chắn đó là mình
-  const isMyPost = Boolean(
-    (followId && (currentUser?.id === followId || currentUser?.userId === followId)) ||
-    (currentUser?.username && adapted?.author?.username && currentUser.username === adapted.author.username)
-  );
+    if (!authorId) return;
+
+    if (authorId === myId) {
+      navigation.navigate('Profile');
+      return;
+    }
+
+    navigation.navigate('UserProfile', { userId: authorId });
+  };
+
+  const openUserProfile = (targetUserId) => {
+    const normalizedTargetId = String(targetUserId ?? '');
+    const myId = String(currentUser?.id ?? currentUser?.userId ?? '');
+
+    if (!normalizedTargetId) return;
+
+    if (normalizedTargetId === myId) {
+      navigation.navigate('Profile');
+      return;
+    }
+
+    navigation.navigate('UserProfile', { userId: normalizedTargetId });
+  };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-white">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}>
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* ── Post Header ── */}
-          <View className="flex-row items-center px-4 py-3">
+          <TouchableOpacity
+            className="flex-row items-center px-4 py-3"
+            activeOpacity={0.8}
+            onPress={openAuthorProfile}>
             <Avatar size={10} uri={adapted?.author?.avatarUrl} />
             <View className="ml-3 flex-1">
               <Text className="text-sm font-semibold text-gray-900">
-                {adapted?.author?.username ?? ''}
+                {adapted?.author?.name ?? adapted?.author?.username ?? ''}
               </Text>
-              <Text className="text-xs text-gray-400">@{adapted?.author?.username ?? ''}</Text>
             </View>
-            {isMyPost ? (
-              <TouchableOpacity
-                onPress={() => setShowOptions(true)}
-                className="px-2 py-1.5"
-                activeOpacity={0.8}>
-                <IconMore />
-              </TouchableOpacity>
-            ) : null}
-          </View>
+          </TouchableOpacity>
 
           {/* Caption */}
           {loading ? (
@@ -262,23 +278,39 @@ export default function PostDetailScreen() {
             </View>
           ) : (
             <Text className="mb-3 px-4 text-sm text-gray-900">
-              {adapted?.title ? <Text className="font-bold">{adapted.title}{"\n"}</Text> : null}
+              {adapted?.title ? (
+                <Text className="font-bold">
+                  {adapted.title}
+                  {'\n'}
+                </Text>
+              ) : null}
               {adapted?.content ?? ''}
             </Text>
           )}
 
-          {/* ── Post Image ── */}
-          <View
-            style={{ width, height: width }}
-            className="items-center justify-center border-b border-t border-gray-100 bg-gray-100 overflow-hidden">
-            {adapted?.images?.[0]?.url ? (
-              <Image source={{ uri: adapted.images[0].url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-            ) : (
+          {/* ── Post Images ── */}
+          {adapted?.images?.length ? (
+            adapted.images.map((item, index) => (
+              <View
+                key={`${adapted.id}-${item.id ?? item.url ?? index}`}
+                style={{ width, height: width }}
+                className="items-center justify-center overflow-hidden border-b border-t border-gray-100 bg-gray-100">
+                <Image
+                  source={{ uri: item.url }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
+              </View>
+            ))
+          ) : (
+            <View
+              style={{ width, height: width }}
+              className="items-center justify-center overflow-hidden border-b border-t border-gray-100 bg-gray-100">
               <View className="h-16 w-16 items-center justify-center rounded-xl border border-gray-300">
                 <Text style={{ fontSize: 32 }}>🖼️</Text>
               </View>
-            )}
-          </View>
+            </View>
+          )}
 
           {/* ── Actions ── */}
           <View className="flex-row items-center px-4 pb-2 pt-3">
@@ -288,21 +320,6 @@ export default function PostDetailScreen() {
             <Text className="mr-4 text-sm font-semibold text-gray-900">
               {likes.toLocaleString()}
             </Text>
-
-            <TouchableOpacity
-              className="mr-1"
-              onPress={() => inputRef.current?.focus()}
-              activeOpacity={0.8}>
-              <IconComment />
-            </TouchableOpacity>
-            <Text className="mr-4 text-sm font-semibold text-gray-900">
-              {adapted?.commentCount ?? comments.length}
-            </Text>
-
-            <TouchableOpacity activeOpacity={0.8}>
-              <IconShare />
-            </TouchableOpacity>
-
             <View className="flex-1" />
           </View>
 
@@ -314,9 +331,9 @@ export default function PostDetailScreen() {
 
             {comments.map((c) => (
               <View key={c.id}>
-                <CommentItem comment={c} />
+                <CommentItem comment={c} onPressUser={openUserProfile} />
                 {c.replies?.map((r) => (
-                  <CommentItem key={r.id} comment={r} isReply />
+                  <CommentItem key={r.id} comment={r} isReply onPressUser={openUserProfile} />
                 ))}
               </View>
             ))}
@@ -326,7 +343,7 @@ export default function PostDetailScreen() {
         {/* ── Comment Input ── */}
         <View className="flex-row items-center border-t border-gray-100 bg-white px-4 py-3">
           <View className="mr-3">
-            <Avatar size={8} />
+            <Avatar size={8} uri={currentUser?.image?.url} />
           </View>
           <View className="flex-1 flex-row items-center rounded-full border border-gray-200 bg-gray-50 px-4 py-2">
             <TextInput
@@ -354,21 +371,6 @@ export default function PostDetailScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-      <PostOptionsModal
-        visible={showOptions}
-        onClose={() => setShowOptions(false)}
-        post={post}
-        onDelete={async (id) => {
-          try {
-            await userService.deletePost(id);
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            }
-          } catch (e) {
-            console.warn('Xoá bài thất bại:', e.message);
-          }
-        }}
-      />
     </SafeAreaView>
   );
 }
