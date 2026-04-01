@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { userService } from '@/services/userService';
+import { adminService } from '@/services/adminService';
 import { useAuth } from '@/context/AuthContext';
 
 const { width } = Dimensions.get('window');
@@ -132,6 +133,7 @@ export default function PostDetailScreen() {
   const { user: currentUser } = useAuth();
   const postParam = route.params?.post;
   const postId = route.params?.postId ?? postParam?.id ?? postParam?.postId;
+  const isAdminView = Boolean(currentUser?.isAdmin || route.params?.adminView);
 
   const [loading, setLoading] = useState(true);
   const [postingComment, setPostingComment] = useState(false);
@@ -143,6 +145,14 @@ export default function PostDetailScreen() {
   const inputRef = useRef(null);
 
   const adapted = useMemo(() => (post ? adaptPostDetail(post) : null), [post]);
+
+  const loadPostDetail = useCallback(
+    async (targetPostId) => {
+      if (!targetPostId) return null;
+      return isAdminView ? adminService.getPost(targetPostId) : userService.getPost(targetPostId);
+    },
+    [isAdminView]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -157,7 +167,7 @@ export default function PostDetailScreen() {
       }
       try {
         setLoading(true);
-        const raw = await userService.getPost(postId);
+        const raw = await loadPostDetail(postId);
         if (!mounted) return;
         const mergedPost = mergePostDetail(postParam, raw);
         const p = adaptPostDetail(mergedPost);
@@ -174,12 +184,12 @@ export default function PostDetailScreen() {
     return () => {
       mounted = false;
     };
-  }, [postId, postParam]);
+  }, [loadPostDetail, postId, postParam]);
 
   const refresh = async () => {
     if (!postId) return;
     try {
-      const raw = await userService.getPost(postId);
+      const raw = await loadPostDetail(postId);
       const mergedPost = mergePostDetail(postParam, raw);
       const p = adaptPostDetail(mergedPost);
       setPost(mergedPost);
@@ -192,7 +202,7 @@ export default function PostDetailScreen() {
   };
 
   const toggleLike = async () => {
-    if (!postId) return;
+    if (!postId || isAdminView) return;
     const nextLiked = !captionLiked;
     setCaptionLiked(nextLiked);
     setLikes((prev) => (nextLiked ? prev + 1 : Math.max(0, prev - 1)));
@@ -208,7 +218,7 @@ export default function PostDetailScreen() {
   };
 
   const handleSendComment = async () => {
-    if (!postId) return;
+    if (!postId || isAdminView) return;
     const text = comment.trim();
     if (!text) return;
     try {
@@ -224,6 +234,7 @@ export default function PostDetailScreen() {
   };
 
   const openAuthorProfile = () => {
+    if (isAdminView) return;
     const authorId = String(adapted?.author?.id ?? '');
     const myId = String(currentUser?.id ?? currentUser?.userId ?? '');
 
@@ -238,6 +249,7 @@ export default function PostDetailScreen() {
   };
 
   const openUserProfile = (targetUserId) => {
+    if (isAdminView) return;
     const normalizedTargetId = String(targetUserId ?? '');
     const myId = String(currentUser?.id ?? currentUser?.userId ?? '');
 
@@ -261,8 +273,8 @@ export default function PostDetailScreen() {
           {/* ── Post Header ── */}
           <TouchableOpacity
             className="flex-row items-center px-4 py-3"
-            activeOpacity={0.8}
-            onPress={openAuthorProfile}>
+            activeOpacity={isAdminView ? 1 : 0.8}
+            onPress={isAdminView ? undefined : openAuthorProfile}>
             <Avatar size={10} uri={adapted?.author?.avatarUrl} />
             <View className="ml-3 flex-1">
               <Text className="text-sm font-semibold text-gray-900">
@@ -302,26 +314,26 @@ export default function PostDetailScreen() {
                 />
               </View>
             ))
-          ) : (
-            <View
-              style={{ width, height: width }}
-              className="items-center justify-center overflow-hidden border-b border-t border-gray-100 bg-gray-100">
-              <View className="h-16 w-16 items-center justify-center rounded-xl border border-gray-300">
-                <Text style={{ fontSize: 32 }}>🖼️</Text>
-              </View>
-            </View>
-          )}
+          ) : null}
 
           {/* ── Actions ── */}
-          <View className="flex-row items-center px-4 pb-2 pt-3">
-            <TouchableOpacity onPress={toggleLike} className="mr-1" activeOpacity={0.8}>
-              <IconHeart filled={captionLiked} />
-            </TouchableOpacity>
-            <Text className="mr-4 text-sm font-semibold text-gray-900">
-              {likes.toLocaleString()}
-            </Text>
-            <View className="flex-1" />
-          </View>
+          {!isAdminView ? (
+            <View className="flex-row items-center px-4 pb-2 pt-3">
+              <TouchableOpacity onPress={toggleLike} className="mr-1" activeOpacity={0.8}>
+                <IconHeart filled={captionLiked} />
+              </TouchableOpacity>
+              <Text className="mr-4 text-sm font-semibold text-gray-900">
+                {likes.toLocaleString()}
+              </Text>
+              <View className="flex-1" />
+            </View>
+          ) : (
+            <View className="px-4 pb-2 pt-3">
+              <Text className="text-sm font-semibold text-gray-900">
+                {likes.toLocaleString()} lượt thích
+              </Text>
+            </View>
+          )}
 
           {/* ── Comments Section ── */}
           <View className="px-4 pb-6 pt-2">
@@ -341,35 +353,37 @@ export default function PostDetailScreen() {
         </ScrollView>
 
         {/* ── Comment Input ── */}
-        <View className="flex-row items-center border-t border-gray-100 bg-white px-4 py-3">
-          <View className="mr-3">
-            <Avatar size={8} uri={currentUser?.image?.url} />
+        {!isAdminView ? (
+          <View className="flex-row items-center border-t border-gray-100 bg-white px-4 py-3">
+            <View className="mr-3">
+              <Avatar size={8} uri={currentUser?.image?.url} />
+            </View>
+            <View className="flex-1 flex-row items-center rounded-full border border-gray-200 bg-gray-50 px-4 py-2">
+              <TextInput
+                ref={inputRef}
+                className="flex-1 text-sm text-gray-900"
+                placeholder="Nhập bình luận của bạn ..."
+                placeholderTextColor="#9ca3af"
+                value={comment}
+                onChangeText={setComment}
+                multiline
+                returnKeyType="send"
+                onSubmitEditing={handleSendComment}
+                editable={!postingComment}
+              />
+            </View>
+            <TouchableOpacity
+              onPress={handleSendComment}
+              className="ml-3"
+              activeOpacity={0.8}
+              disabled={!comment.trim() || postingComment}>
+              <Text
+                className={`text-sm font-bold ${comment.trim() ? 'text-blue-500' : 'text-gray-300'}`}>
+                {postingComment ? '...' : 'ĐĂNG'}
+              </Text>
+            </TouchableOpacity>
           </View>
-          <View className="flex-1 flex-row items-center rounded-full border border-gray-200 bg-gray-50 px-4 py-2">
-            <TextInput
-              ref={inputRef}
-              className="flex-1 text-sm text-gray-900"
-              placeholder="Nhập bình luận của bạn ..."
-              placeholderTextColor="#9ca3af"
-              value={comment}
-              onChangeText={setComment}
-              multiline
-              returnKeyType="send"
-              onSubmitEditing={handleSendComment}
-              editable={!postingComment}
-            />
-          </View>
-          <TouchableOpacity
-            onPress={handleSendComment}
-            className="ml-3"
-            activeOpacity={0.8}
-            disabled={!comment.trim() || postingComment}>
-            <Text
-              className={`text-sm font-bold ${comment.trim() ? 'text-blue-500' : 'text-gray-300'}`}>
-              {postingComment ? '...' : 'ĐĂNG'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        ) : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

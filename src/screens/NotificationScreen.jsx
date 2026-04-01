@@ -140,7 +140,7 @@ const NotifItem = ({ item, onPress }) => (
 );
 
 const enrichNotificationsWithAvatar = async (items) => {
-  const normalized = (Array.isArray(items) ? items : []).map(normalizeNotification);
+  const normalized = sortNotificationsByTime((Array.isArray(items) ? items : []).map(normalizeNotification));
   const senderIds = [...new Set(normalized.map((item) => item.senderId).filter(Boolean))];
 
   if (senderIds.length === 0) return normalized;
@@ -158,10 +158,10 @@ const enrichNotificationsWithAvatar = async (items) => {
 
   const avatarMap = Object.fromEntries(avatarEntries);
 
-  return sortNotificationsByTime(normalized.map((item) => ({
+  return normalized.map((item) => ({
     ...item,
     avatarUrl: item.senderId ? avatarMap[item.senderId] ?? null : null,
-  })));
+  }));
 };
 
 export default function NotificationScreen() {
@@ -189,7 +189,7 @@ export default function NotificationScreen() {
 
         const enriched = await enrichNotificationsWithAvatar(items);
         if (!mounted) return;
-        setNotifications(sortNotificationsByTime(enriched));
+        setNotifications(enriched);
       } catch {
         if (mounted) setNotifications([]);
       } finally {
@@ -218,14 +218,9 @@ export default function NotificationScreen() {
 
     try {
       await userService.readNotification(item.id);
-      setNotifications((prev) =>
-        sortNotificationsByTime(
-          prev.map((notif) => (notif.id === item.id ? { ...notif, unread: false } : notif))
-        )
-      );
+      setNotifications((prev) => prev.map((notif) => (notif.id === item.id ? { ...notif, unread: false } : notif)));
       showReadToast(item.unread ? 'Đã đánh dấu là đã đọc' : 'Thông báo đã được mở');
     } catch {
-      // Keep UI quiet
     }
   };
 

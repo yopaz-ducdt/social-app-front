@@ -36,9 +36,10 @@ export default function PostCard({ post, onDeleted }) {
     'unknown';
   const authorId = String(author.id ?? post?.raw?.userResponse?.id ?? post?.raw?.userId ?? '');
   const imageUrls = (Array.isArray(post?.images) ? post.images : []).map((item) => item?.url).filter(Boolean);
-  const feedImages = imageUrls.length > 0 ? imageUrls : post?.image?.url ? [post.image.url] : [];
+  const feedImages = imageUrls;
   const visibleImages = feedImages.slice(0, 3);
   const remainingImages = feedImages.length - visibleImages.length;
+  const hasVisibleImages = visibleImages.length > 0;
 
   const isMyPost = Boolean(
     currentUser?.username === post.username ||
@@ -99,7 +100,7 @@ export default function PostCard({ post, onDeleted }) {
         </TouchableOpacity>
       </View>
 
-      {visibleImages.length > 0 && (
+      {hasVisibleImages && (
         <TouchableOpacity
           style={{ width, height: width }}
           activeOpacity={0.9}

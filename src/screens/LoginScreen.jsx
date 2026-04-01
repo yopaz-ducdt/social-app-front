@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,6 @@ import {
   Alert,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { authService } from '@/services/authService';
@@ -30,7 +29,6 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
       Alert.alert('Thông báo', 'Vui lòng nhập đầy đủ thông tin.');
@@ -41,11 +39,9 @@ export default function LoginScreen() {
       const data = await authService.login(username.trim(), password);
 
       const token =
-        typeof data === 'string'
-          ? data
-          : data?.token ?? data?.accessToken ?? data?.jwt ?? '';
+        typeof data === 'string' ? data : (data?.token ?? data?.accessToken ?? data?.jwt ?? '');
 
-      if (!token) throw new Error('Không nhận được token từ server.');
+      if (!token) throw new Error('Sai tên đăng nhập hoặc mật khẩu');
       await login(token);
     } catch (error) {
       Alert.alert('Đăng nhập thất bại', error.message);
@@ -53,8 +49,6 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
-
-
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -65,9 +59,8 @@ export default function LoginScreen() {
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-
           <View className="flex-1 px-6 pb-10 pt-16">
-            <LogoApp size={60} className="self-center mb-8" />
+            <LogoApp size={60} className="mb-8 self-center" />
 
             <Text className="mb-10 text-center text-2xl font-bold text-gray-900">
               Chào mừng trở lại
@@ -128,7 +121,7 @@ export default function LoginScreen() {
               {loading ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text className="text-white font-bold">Đăng nhập</Text>
+                <Text className="font-bold text-white">Đăng nhập</Text>
               )}
             </TouchableOpacity>
 
@@ -139,29 +132,13 @@ export default function LoginScreen() {
               <View className="h-px flex-1 bg-gray-200" />
             </View>
 
-            {/* GOOGLE LOGIN */}
-            {/* <TouchableOpacity
-              className="mb-10 flex-row items-center justify-center rounded-lg border border-gray-200 py-3.5"
-              onPress={() => promptAsync()}
-              disabled={!request || loading}>
-              {loading ? (
-                <ActivityIndicator />
-              ) : (
-                <Text>Đăng nhập với Google</Text>
-              )}
-            </TouchableOpacity> */}
-
-            {/* SIGNUP */}
             <View className="flex-row justify-center">
               <Text className="text-sm text-gray-500">Chưa có tài khoản? </Text>
               <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-                <Text className="text-sm font-semibold text-black underline">
-                  Nhấn vào đây
-                </Text>
+                <Text className="text-sm font-semibold text-black underline">Nhấn vào đây</Text>
               </TouchableOpacity>
             </View>
           </View>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

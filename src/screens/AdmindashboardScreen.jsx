@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { adminService } from '@/services/adminService';
@@ -20,9 +20,6 @@ const MODULES = [
     screen: 'AdminContent',
   },
 ];
-
-
-// ─── Main Screen ──────────────────────────────────────────────
 export default function AdminDashboardScreen() {
   const navigation = useNavigation();
   const isFocused = useIsFocused();
@@ -82,7 +79,6 @@ export default function AdminDashboardScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {/* ── Header ── */}
       <View className="flex-row items-center px-4 py-3">
         <Text className="flex-1 text-lg font-bold text-gray-900">Bảng điều khiển Admin</Text>
         <TouchableOpacity
@@ -96,7 +92,6 @@ export default function AdminDashboardScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 16 }}>
-        {/* ── Tổng quan ── */}
         <View className="mb-6 px-4">
           <Text className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400">
             Tổng Quan
@@ -112,7 +107,6 @@ export default function AdminDashboardScreen() {
           </View>
         </View>
 
-        {/* ── Management Modules ── */}
         <View className="px-4">
           <Text className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400">
             Management Modules
@@ -125,18 +119,15 @@ export default function AdminDashboardScreen() {
                 activeOpacity={0.7}
                 className={`flex-row items-center bg-white px-4 py-4 ${index < MODULES.length - 1 ? 'border-b border-gray-100' : ''
                   }`}>
-                {/* Icon */}
                 <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
                   <Text style={{ fontSize: 18 }}>{mod.icon}</Text>
                 </View>
 
-                {/* Text */}
                 <View className="flex-1">
                   <Text className="mb-0.5 text-sm font-semibold text-gray-900">{mod.label}</Text>
                   <Text className="text-xs leading-4 text-gray-400">{mod.desc}</Text>
                 </View>
 
-                {/* Arrow */}
                 <Text className="ml-2 text-lg text-gray-400">›</Text>
               </TouchableOpacity>
             ))}

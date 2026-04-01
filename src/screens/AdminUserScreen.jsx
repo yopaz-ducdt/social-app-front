@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -19,13 +19,11 @@ const TABS = [
   { key: 'blocked', label: 'Khoá' },
 ];
 
-// ─── User Item ────────────────────────────────────────────────
 const UserItem = ({ user, onToggle, isToggling }) => {
   const isBlocked = user.status === 'blocked';
 
   return (
     <View className="flex-row items-center border-b border-gray-100 px-4 py-3">
-      {/* Avatar */}
       <View
         className={`mr-3 h-11 w-11 items-center justify-center overflow-hidden rounded-full ${isBlocked ? 'bg-gray-200' : 'bg-gray-100'}`}>
         {user.avatarUrl ? (
@@ -35,7 +33,6 @@ const UserItem = ({ user, onToggle, isToggling }) => {
         )}
       </View>
 
-      {/* Info */}
       <View className="flex-1">
         <Text className={`text-sm font-semibold ${isBlocked ? 'text-gray-400' : 'text-gray-900'}`}>
           {user.fullName}
@@ -50,7 +47,6 @@ const UserItem = ({ user, onToggle, isToggling }) => {
         </View>
       </View>
 
-      {/* Lock/Unlock button */}
       <TouchableOpacity
         onPress={() => onToggle(user.id)}
         disabled={isToggling}
@@ -67,7 +63,6 @@ const UserItem = ({ user, onToggle, isToggling }) => {
   );
 };
 
-// ─── Main Screen ──────────────────────────────────────────────
 export default function AdminUsersScreen() {
   const navigation = useNavigation();
   const [search, setSearch] = useState('');
@@ -76,7 +71,7 @@ export default function AdminUsersScreen() {
   const [loading, setLoading] = useState(true);
   const [togglingId, setTogglingId] = useState(null);
 
-  const normalizeUsers = (payload) => {
+  const normalizeUsers = useCallback((payload) => {
     const items = payload?.content ?? payload?.items ?? payload ?? [];
     if (!Array.isArray(items)) return [];
     return items.map((u) => ({
@@ -86,15 +81,13 @@ export default function AdminUsersScreen() {
       gender: u?.gender ?? '',
       enabled: Boolean(u?.enabled),
       status: u?.enabled === false ? 'blocked' : 'active',
-      raw: u,
     }));
-  };
+  }, []);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     const payload = await adminService.getUsers(search.trim(), 0, 50);
     setUsers(normalizeUsers(payload));
-  };
-
+  }, [normalizeUsers, search]);
 
   useEffect(() => {
     let mounted = true;
@@ -111,13 +104,12 @@ export default function AdminUsersScreen() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [loadUsers]);
 
   const handleToggle = async (id) => {
-    if (togglingId) return; // Prevent multiple clicks
+    if (togglingId) return;
     setTogglingId(id);
 
-    // Tự động thay đổi UI để phản hồi nhanh hơn (Optimistic Update)
     setUsers((prev) =>
       prev.map((u) => {
         if (u.id === id) {
@@ -135,7 +127,6 @@ export default function AdminUsersScreen() {
     try {
       await adminService.toggleUser(id);
     } catch (e) {
-      // Rollback nếu API lỗi
       setUsers((prev) =>
         prev.map((u) => {
           if (u.id === id) {
@@ -170,7 +161,6 @@ export default function AdminUsersScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {/* ── Header ── */}
       <View className="flex-row items-center border-b border-gray-100 px-4 py-3">
         <TouchableOpacity onPress={() => navigation.goBack()} className="mr-2 p-1">
           <Text style={{ fontSize: 28, lineHeight: 30, color: '#111' }}>‹</Text>
@@ -181,7 +171,6 @@ export default function AdminUsersScreen() {
         <View className="w-8" />
       </View>
 
-      {/* ── Search ── */}
       <View className="px-4 py-3">
         <View className="flex-row items-center rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
           <Text className="mr-2 text-gray-400">🔍</Text>
@@ -201,7 +190,6 @@ export default function AdminUsersScreen() {
         </View>
       </View>
 
-      {/* ── Filter Tabs ── */}
       <View className="mb-2 flex-row gap-2 px-4">
         {TABS.map((tab) => (
           <TouchableOpacity
@@ -219,7 +207,6 @@ export default function AdminUsersScreen() {
         ))}
       </View>
 
-      {/* ── User List ── */}
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}

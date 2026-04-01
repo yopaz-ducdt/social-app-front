@@ -57,6 +57,14 @@ export default function AppNavigator() {
             <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
             <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
             <Stack.Screen name="AdminContent" component={AdminContentScreen} />
+            <Stack.Screen
+              name="PostDetail"
+              component={PostDetailScreen}
+              options={{
+                headerShown: true,
+                ...makeHeader({ title: 'Bài đăng', showBack: true }),
+              }}
+            />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
           </>
