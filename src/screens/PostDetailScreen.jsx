@@ -5,8 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
+  Keyboard,
   Dimensions,
   Image,
   Alert,
@@ -89,14 +88,15 @@ const adaptComments = (rawComments) => {
   const arr = Array.isArray(rawComments) ? rawComments : [];
   return arr.map((c) => ({
     id: String(c?.id ?? Math.random()),
-    username: pickFirstText(
-      c?.fullName,
-      c?.username,
-      c?.userResponse?.username,
-      [c?.userResponse?.firstName, c?.userResponse?.lastName].filter(Boolean).join(' '),
-      c?.author?.username,
-      c?.authorName
-    ) || 'unknown',
+    username:
+      pickFirstText(
+        c?.fullName,
+        c?.username,
+        c?.userResponse?.username,
+        [c?.userResponse?.firstName, c?.userResponse?.lastName].filter(Boolean).join(' '),
+        c?.author?.username,
+        c?.authorName
+      ) || 'unknown',
     userId: String(c?.userId ?? c?.userResponse?.id ?? c?.authorId ?? c?.author?.id ?? ''),
     text: pickFirstText(c?.content, c?.text, c?.comment),
     avatarUrl: pickFirstText(
@@ -175,6 +175,7 @@ export default function PostDetailScreen() {
   const [likes, setLikes] = useState(0);
   const [comment, setComment] = useState('');
   const [showOptions, setShowOptions] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const inputRef = useRef(null);
 
   const adapted = useMemo(() => (post ? adaptPostDetail(post) : null), [post]);
@@ -183,9 +184,15 @@ export default function PostDetailScreen() {
     const myId = String(currentUser?.id ?? currentUser?.userId ?? '');
     return Boolean(
       (adapted?.author?.username && currentUser?.username === adapted.author.username) ||
-        (authorId && myId === authorId)
+      (authorId && myId === authorId)
     );
-  }, [adapted?.author?.id, adapted?.author?.username, currentUser?.id, currentUser?.userId, currentUser?.username]);
+  }, [
+    adapted?.author?.id,
+    adapted?.author?.username,
+    currentUser?.id,
+    currentUser?.userId,
+    currentUser?.username,
+  ]);
 
   const loadPostDetail = useCallback(
     async (targetPostId) => {
@@ -226,6 +233,20 @@ export default function PostDetailScreen() {
       mounted = false;
     };
   }, [loadPostDetail, postId, postParam]);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   const refresh = async () => {
     if (!postId) return;
@@ -334,10 +355,7 @@ export default function PostDetailScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-white">
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}>
+      <View style={{ flex: 1, paddingBottom: keyboardHeight }}>
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* ── Post Header ── */}
           <TouchableOpacity
@@ -377,20 +395,20 @@ export default function PostDetailScreen() {
           )}
 
           {/* ── Post Images ── */}
-          {adapted?.images?.length ? (
-            adapted.images.map((item, index) => (
-              <View
-                key={`${adapted.id}-${item.id ?? item.url ?? index}`}
-                style={{ width, height: width }}
-                className="items-center justify-center overflow-hidden border-b border-t border-gray-100 bg-gray-100">
-                <Image
-                  source={{ uri: item.url }}
-                  style={{ width: '100%', height: '100%' }}
-                  resizeMode="cover"
-                />
-              </View>
-            ))
-          ) : null}
+          {adapted?.images?.length
+            ? adapted.images.map((item, index) => (
+                <View
+                  key={`${adapted.id}-${item.id ?? item.url ?? index}`}
+                  style={{ width, height: width }}
+                  className="items-center justify-center overflow-hidden border-b border-t border-gray-100 bg-gray-100">
+                  <Image
+                    source={{ uri: item.url }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                </View>
+              ))
+            : null}
 
           {/* ── Actions ── */}
           {!isAdminView ? (
@@ -460,7 +478,7 @@ export default function PostDetailScreen() {
             </TouchableOpacity>
           </View>
         ) : null}
-      </KeyboardAvoidingView>
+      </View>
       {!isAdminView ? (
         <PostOptionsModal
           visible={showOptions}
