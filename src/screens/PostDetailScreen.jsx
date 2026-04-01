@@ -9,18 +9,22 @@ import {
   Platform,
   Dimensions,
   Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { userService } from '@/services/userService';
 import { adminService } from '@/services/adminService';
 import { useAuth } from '@/context/AuthContext';
+import PostOptionsModal from '@/components/PostOptionsModal';
 
 const { width } = Dimensions.get('window');
 
 // Normalize response shape theo PostResponse schema API
 const adaptPostDetail = (raw) => {
   const userResponse = raw?.userResponse ?? raw?.user ?? raw?.author ?? null;
+  const comments =
+    raw?.commentResponseList ?? raw?.comments ?? raw?.commentList ?? raw?.commentResponses ?? [];
   const images =
     Array.isArray(raw?.images) && raw.images.length > 0
       ? raw.images.filter((item) => item?.url)
@@ -36,7 +40,7 @@ const adaptPostDetail = (raw) => {
     content: raw?.content ?? '',
     likes: Number(raw?.like ?? 0) || 0,
     images,
-    commentCount: raw?.commentResponseList?.length ?? 0,
+    commentCount: Array.isArray(comments) ? comments.length : 0,
     author: {
       name: fullName || raw?.username || userResponse?.username || '',
       username: userResponse?.username ?? raw?.username ?? raw?.author?.username ?? '',
@@ -45,7 +49,7 @@ const adaptPostDetail = (raw) => {
     },
     isFollowing: Boolean(raw?.isFollowing ?? false),
     liked: Boolean(raw?.liked ?? raw?.isLiked ?? false),
-    comments: raw?.commentResponseList ?? [],
+    comments,
     raw,
   };
 };
@@ -66,18 +70,44 @@ const mergePostDetail = (basePost, detailPost) => {
       Array.isArray(detailPost?.images) && detailPost.images.length > 0
         ? detailPost.images
         : basePost?.images,
-    commentResponseList: detailPost?.commentResponseList ?? basePost?.commentResponseList,
+    commentResponseList:
+      detailPost?.commentResponseList ??
+      detailPost?.comments ??
+      basePost?.commentResponseList ??
+      basePost?.comments,
   };
+};
+
+const pickFirstText = (...values) => {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
 };
 
 const adaptComments = (rawComments) => {
   const arr = Array.isArray(rawComments) ? rawComments : [];
   return arr.map((c) => ({
     id: String(c?.id ?? Math.random()),
-    username: c?.fullName ?? c?.username ?? 'unknown',
-    userId: c?.userId ?? '',
-    text: c?.content ?? '',
-    avatarUrl: c?.url ?? '',
+    username: pickFirstText(
+      c?.fullName,
+      c?.username,
+      c?.userResponse?.username,
+      [c?.userResponse?.firstName, c?.userResponse?.lastName].filter(Boolean).join(' '),
+      c?.author?.username,
+      c?.authorName
+    ) || 'unknown',
+    userId: String(c?.userId ?? c?.userResponse?.id ?? c?.authorId ?? c?.author?.id ?? ''),
+    text: pickFirstText(c?.content, c?.text, c?.comment),
+    avatarUrl: pickFirstText(
+      c?.url,
+      c?.avatarUrl,
+      c?.image?.url,
+      c?.userResponse?.image?.url,
+      c?.author?.image?.url
+    ),
+    time: pickFirstText(c?.time, c?.createdAt, c?.createAt, c?.updatedAt),
+    replies: adaptComments(c?.replies ?? c?.replyResponseList ?? c?.children ?? []),
     likes: 0,
     liked: false,
     raw: c,
@@ -88,6 +118,7 @@ const adaptComments = (rawComments) => {
 const IconHeart = ({ filled, size = 22 }) => (
   <Text style={{ fontSize: size }}>{filled ? '❤️' : '🤍'}</Text>
 );
+const IconMore = () => <Text style={{ fontWeight: '500', color: '#555' }}>•••</Text>;
 
 // ─── Avatar placeholder ───────────────────────────────────────
 const Avatar = ({ size = 10, uri = null }) => (
@@ -120,8 +151,9 @@ const CommentItem = ({ comment, isReply = false, onPressUser }) => {
           <TouchableOpacity activeOpacity={0.8} onPress={() => onPressUser?.(comment.userId)}>
             <Text className="mr-1 text-sm font-semibold text-gray-900">{comment.username}</Text>
           </TouchableOpacity>
-          <Text className="mr-2 text-xs text-gray-400">{comment.time}</Text>
+          {comment.time ? <Text className="mr-2 text-xs text-gray-400">{comment.time}</Text> : null}
         </View>
+        {comment.text ? <Text className="mt-1 text-sm text-gray-900">{comment.text}</Text> : null}
       </View>
     </View>
   );
@@ -142,9 +174,18 @@ export default function PostDetailScreen() {
   const [captionLiked, setCaptionLiked] = useState(false);
   const [likes, setLikes] = useState(0);
   const [comment, setComment] = useState('');
+  const [showOptions, setShowOptions] = useState(false);
   const inputRef = useRef(null);
 
   const adapted = useMemo(() => (post ? adaptPostDetail(post) : null), [post]);
+  const isMyPost = useMemo(() => {
+    const authorId = String(adapted?.author?.id ?? '');
+    const myId = String(currentUser?.id ?? currentUser?.userId ?? '');
+    return Boolean(
+      (adapted?.author?.username && currentUser?.username === adapted.author.username) ||
+        (authorId && myId === authorId)
+    );
+  }, [adapted?.author?.id, adapted?.author?.username, currentUser?.id, currentUser?.userId, currentUser?.username]);
 
   const loadPostDetail = useCallback(
     async (targetPostId) => {
@@ -263,6 +304,34 @@ export default function PostDetailScreen() {
     navigation.navigate('UserProfile', { userId: normalizedTargetId });
   };
 
+  const handleDeletePost = async (targetPostId) => {
+    try {
+      const response = await userService.deletePost(targetPostId);
+      if (response?.code && response.code !== 200) {
+        throw new Error(response?.message ?? 'Không thể xóa bài viết.');
+      }
+      setShowOptions(false);
+      Alert.alert('Thành công', 'Đã xóa bài viết.', [
+        {
+          text: 'OK',
+          onPress: () => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+              return;
+            }
+            navigation.navigate('Home');
+          },
+        },
+      ]);
+    } catch (e) {
+      Alert.alert('Thất bại', e.message);
+    }
+  };
+
+  const handleReportPost = async (content) => {
+    await userService.createReport(postId, 'Báo cáo bài viết', content.trim());
+  };
+
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-white">
       <KeyboardAvoidingView
@@ -282,6 +351,13 @@ export default function PostDetailScreen() {
               </Text>
             </View>
           </TouchableOpacity>
+          {!isAdminView ? (
+            <View className="absolute right-4 top-3">
+              <TouchableOpacity className="px-1 py-1" onPress={() => setShowOptions(true)}>
+                <IconMore />
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
           {/* Caption */}
           {loading ? (
@@ -385,6 +461,16 @@ export default function PostDetailScreen() {
           </View>
         ) : null}
       </KeyboardAvoidingView>
+      {!isAdminView ? (
+        <PostOptionsModal
+          visible={showOptions}
+          onClose={() => setShowOptions(false)}
+          post={post ?? adapted}
+          isMyPost={isMyPost}
+          onDelete={handleDeletePost}
+          onReport={handleReportPost}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

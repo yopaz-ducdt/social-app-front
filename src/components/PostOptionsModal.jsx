@@ -20,12 +20,20 @@ export default function PostOptionsModal({ visible, onClose, post, isMyPost, onD
 
   const handleEdit = () => {
     if (deleting || reporting) return;
+    if (!isMyPost) {
+      Alert.alert('Thông báo', 'Chỉ chủ bài viết mới có thể chỉnh sửa bài viết này.');
+      return;
+    }
     onClose();
     navigation.navigate('EditPost', { post });
   };
 
   const confirmDelete = () => {
     if (deleting || reporting) return;
+    if (!isMyPost) {
+      Alert.alert('Thông báo', 'Chỉ chủ bài viết mới có thể xóa bài viết này.');
+      return;
+    }
 
     Alert.alert('Xóa bài viết', 'Bạn có chắc muốn xóa bài viết này không?', [
       { text: 'Hủy', style: 'cancel' },
@@ -89,33 +97,7 @@ export default function PostOptionsModal({ visible, onClose, post, isMyPost, onD
         {/* Handle bar */}
         <View className="mb-5 h-1 w-10 self-center rounded-full bg-gray-300" />
 
-        {isMyPost ? (
-          <>
-            <TouchableOpacity
-              onPress={handleEdit}
-              disabled={deleting}
-              activeOpacity={0.7}
-              className="flex-row items-center border-b border-gray-100 py-4">
-              <Text style={{ fontSize: 20, width: 32 }}>✏️</Text>
-              <Text className="text-base text-gray-900">Chỉnh sửa bài viết</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={confirmDelete}
-              disabled={deleting}
-              activeOpacity={0.7}
-              className="flex-row items-center py-4">
-              {deleting ? (
-                <ActivityIndicator size="small" color="#ef4444" style={{ width: 32 }} />
-              ) : (
-                <Text style={{ fontSize: 20, width: 32 }}>🗑️</Text>
-              )}
-              <Text className="text-base text-red-500">
-                {deleting ? 'Đang xoá...' : 'Xoá bài viết'}
-              </Text>
-            </TouchableOpacity>
-          </>
-        ) : showReportForm ? (
+        {showReportForm ? (
           <>
             <Text className="mb-3 text-base font-semibold text-gray-900">Báo cáo bài viết</Text>
             <TextInput
@@ -150,13 +132,40 @@ export default function PostOptionsModal({ visible, onClose, post, isMyPost, onD
             </View>
           </>
         ) : (
-          <TouchableOpacity
-            onPress={() => setShowReportForm(true)}
-            activeOpacity={0.7}
-            className="flex-row items-center py-4">
-            <Text style={{ fontSize: 20, width: 32 }}>🚩</Text>
-            <Text className="text-base text-red-500">Báo cáo bài viết</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              onPress={handleEdit}
+              disabled={deleting || reporting}
+              activeOpacity={0.7}
+              className="flex-row items-center border-b border-gray-100 py-4">
+              <Text style={{ fontSize: 20, width: 32 }}>✏️</Text>
+              <Text className="text-base text-gray-900">Chỉnh sửa bài viết</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={confirmDelete}
+              disabled={deleting || reporting}
+              activeOpacity={0.7}
+              className="flex-row items-center border-b border-gray-100 py-4">
+              {deleting ? (
+                <ActivityIndicator size="small" color="#ef4444" style={{ width: 32 }} />
+              ) : (
+                <Text style={{ fontSize: 20, width: 32 }}>🗑️</Text>
+              )}
+              <Text className="text-base text-red-500">
+                {deleting ? 'Đang xoá...' : 'Xoá bài viết'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setShowReportForm(true)}
+              disabled={deleting || reporting}
+              activeOpacity={0.7}
+              className="flex-row items-center py-4">
+              <Text style={{ fontSize: 20, width: 32 }}>🚩</Text>
+              <Text className="text-base text-red-500">Báo cáo bài viết</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
     </Modal>

@@ -93,9 +93,6 @@ export default function ProfileScreen() {
         <Text className="flex-1 text-center text-base font-semibold text-gray-900">
           {viewModel.username}
         </Text>
-        <TouchableOpacity className="p-1">
-          <Text style={{ fontSize: 16, color: '#555' }}>•••</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -133,16 +130,7 @@ export default function ProfileScreen() {
               onPress={() => navigation.navigate('EditProfile')}>
               <Text className="text-sm font-bold tracking-widest text-white">CHỈNH SỬA</Text>
             </TouchableOpacity>
-            {user?.isAdmin && (
-              <TouchableOpacity
-                className="items-center justify-center rounded-xl border border-gray-200 px-4 py-3"
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate('AdminDashboard')}>
-                <Text style={{ fontSize: 16 }}>🛡️</Text>
-              </TouchableOpacity>
-            )}
           </View>
-
         </View>
 
         {/* ── Grid ── */}

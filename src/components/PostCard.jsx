@@ -40,7 +40,6 @@ export default function PostCard({ post, onDeleted }) {
   const visibleImages = feedImages.slice(0, 3);
   const remainingImages = feedImages.length - visibleImages.length;
   const hasVisibleImages = visibleImages.length > 0;
-
   const isMyPost = Boolean(
     currentUser?.username === post.username ||
     currentUser?.username === author.username ||
@@ -66,12 +65,15 @@ export default function PostCard({ post, onDeleted }) {
 
   const handleDelete = async (id) => {
     try {
-      await userService.deletePost(id);
+      const response = await userService.deletePost(id);
+      if (response?.code && response.code !== 200) {
+        throw new Error(response?.message ?? 'Không thể xóa bài viết.');
+      }
       setShowOptions(false);
       onDeleted?.(id);
       Alert.alert('Thành công', 'Đã xóa bài viết.');
     } catch (e) {
-      console.warn('Xoá bài thất bại:', e.message);
+      Alert.alert('Thất bại', e.message);
     }
   };
 
