@@ -85,9 +85,9 @@ export default function AdminUsersScreen() {
   }, []);
 
   const loadUsers = useCallback(async () => {
-    const payload = await adminService.getUsers(search.trim(), 0, 50);
+    const payload = await adminService.getUsers('', 0, 200);
     setUsers(normalizeUsers(payload));
-  }, [normalizeUsers, search]);
+  }, [normalizeUsers]);
 
   useEffect(() => {
     let mounted = true;
@@ -147,10 +147,13 @@ export default function AdminUsersScreen() {
   };
 
   const filtered = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
     return users.filter((u) => {
       const matchSearch =
-        u.fullName.toLowerCase().includes(search.toLowerCase()) ||
-        u.id.toLowerCase().includes(search.toLowerCase());
+        !normalizedSearch ||
+        u.fullName.toLowerCase().includes(normalizedSearch) ||
+        u.id.toLowerCase().includes(normalizedSearch);
       const matchTab =
         activeTab === 'all' ||
         (activeTab === 'active' && u.status === 'active') ||
