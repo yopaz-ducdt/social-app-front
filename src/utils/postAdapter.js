@@ -1,3 +1,5 @@
+import { formatDisplayDateTime } from '@/utils/dateTime';
+
 export function adaptPost(raw) {
   const id = raw?.id ?? String(Math.random());
   const title = raw?.title ?? '';
@@ -5,6 +7,7 @@ export function adaptPost(raw) {
   const images = raw?.images ?? [];
   const likes = Number(raw?.like ?? 0) || 0;
   const comments = raw?.commentResponseList ?? [];
+  const createDate = raw?.createDate ?? raw?.createdAt ?? raw?.createAt ?? '';
   const userResponse = raw?.userResponse ?? raw?.user ?? raw?.author ?? null;
   const fullName = [userResponse?.firstName, userResponse?.lastName].filter(Boolean).join(' ').trim();
   const username =
@@ -29,6 +32,8 @@ export function adaptPost(raw) {
     images,
     likes,
     comments,
+    createDate,
+    time: formatDisplayDateTime(createDate),
     username,
     author,
     image: author.image,

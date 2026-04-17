@@ -16,6 +16,7 @@ import { userService } from '@/services/userService';
 import { adminService } from '@/services/adminService';
 import { useAuth } from '@/context/AuthContext';
 import PostOptionsModal from '@/components/PostOptionsModal';
+import { formatDisplayDateTime } from '@/utils/dateTime';
 
 const { width } = Dimensions.get('window');
 
@@ -38,6 +39,8 @@ const adaptPostDetail = (raw) => {
     title: raw?.title ?? '',
     content: raw?.content ?? '',
     likes: Number(raw?.like ?? 0) || 0,
+    createDate: raw?.createDate ?? raw?.createdAt ?? raw?.createAt ?? '',
+    time: formatDisplayDateTime(raw?.createDate ?? raw?.createdAt ?? raw?.createAt ?? ''),
     images,
     commentCount: Array.isArray(comments) ? comments.length : 0,
     author: {
@@ -106,7 +109,10 @@ const adaptComments = (rawComments) => {
       c?.userResponse?.image?.url,
       c?.author?.image?.url
     ),
-    time: pickFirstText(c?.time, c?.createdAt, c?.createAt, c?.updatedAt),
+    createDate: pickFirstText(c?.createDate, c?.createdAt, c?.createAt, c?.updatedAt),
+    time: formatDisplayDateTime(
+      pickFirstText(c?.createDate, c?.createdAt, c?.createAt, c?.updatedAt, c?.time)
+    ),
     replies: adaptComments(c?.replies ?? c?.replyResponseList ?? c?.children ?? []),
     likes: 0,
     liked: false,
@@ -367,6 +373,7 @@ export default function PostDetailScreen() {
               <Text className="text-sm font-semibold text-gray-900">
                 {adapted?.author?.name ?? adapted?.author?.username ?? ''}
               </Text>
+              {adapted?.time ? <Text className="mt-0.5 text-xs text-gray-400">{adapted.time}</Text> : null}
             </View>
           </TouchableOpacity>
           {!isAdminView ? (

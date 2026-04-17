@@ -95,6 +95,7 @@ export default function PostCard({ post, onDeleted }) {
           />
           <View className="ml-3 flex-1">
             <Text className="text-sm font-semibold text-gray-900">{displayName}</Text>
+            {post?.time ? <Text className="mt-0.5 text-xs text-gray-400">{post.time}</Text> : null}
           </View>
         </TouchableOpacity>
         <TouchableOpacity className="px-1" onPress={() => setShowOptions(true)}>
@@ -154,8 +155,6 @@ export default function PostCard({ post, onDeleted }) {
         ) : null}
       </View>
 
-      {/* Time */}
-      <Text className="mt-1 px-4 text-xs text-gray-400">{post.time}</Text>
       <PostOptionsModal
         visible={showOptions}
         onClose={() => setShowOptions(false)}
